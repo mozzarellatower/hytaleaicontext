@@ -54,6 +54,9 @@ public final class MyPlugin extends JavaPlugin {
 {
   "Group": "MyName",
   "Name": "MyPlugin",
+  "Authors": [
+    "YourName"
+  ],
   "Version": "1.0.0",
   "Main": "com.example.MyPlugin",
   "ServerVersion": "*"
