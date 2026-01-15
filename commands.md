@@ -1,0 +1,248 @@
+# Hytale server commands (local notes)
+
+This server exposes commands through the console and (for players with permission) in chat. Commands are typically written with a leading slash and space-separated arguments.
+
+## Where to type commands
+
+- **Server console**: Type the command directly into the terminal running `HytaleServer.jar`. You can usually omit the leading slash here, but keeping it is fine.
+- **In-game chat**: Type commands with a leading `/` (for example, `/auth login ...`). Only players with permission can run most commands.
+
+## Basic command syntax
+
+```
+/<command> [arg1] [arg2] ...
+```
+
+- Arguments are space-separated.
+- If an argument contains spaces, try quoting it with `"` or `'` (server implementations vary).
+- If a command fails, check the server console log for the error message.
+
+## Finding available commands
+
+Because Hytale is built for modding, the command list depends on the core server version and any installed mods.
+
+To discover commands:
+
+1. Check the server console output on startup for modules/plugins and any registered commands.
+2. Try a built-in help command if available (commonly `/help` or `/commands`).
+3. Check mod documentation or any `manifest.json`/docs bundled with the mod.
+4. If available, try `/dumpcommands` to export a full list (class `DumpCommandsCommand` exists in the jar).
+
+## Auth command (confirmed from logs)
+
+The log indicates authentication uses a command like:
+
+```
+/auth login <token-or-credentials>
+```
+
+This appears in the server log message: "Use /auth login to authenticate".
+
+## Permissions
+
+Permissions are stored in `serverexample/permissions.json`. In this sample, the `OP` group has `"*"` (all permissions). If you add players or groups there, restart the server to apply changes.
+
+## Mods and custom commands
+
+Mods can register their own commands. Look for mod folders under `serverexample/mods` and any mod-specific config or docs. If a mod has no manifest or docs, you can still inspect the server log on startup to see whether it loaded and what commands it adds.
+
+## Core commands (inferred from the server jar)
+
+I scanned `serverexample/Server/HytaleServer.jar` for command classes. The exact command labels and arguments can differ from class names, so treat this as a likely set and use `/help` or `/commands` to confirm syntax.
+
+Examples below are best-effort guesses based on class names. If one fails, try `/help <command>` or `/commands` to see the real shape.
+
+### Utility and meta
+
+- `/help`
+- `/commands`
+- `/version`
+- `/ping`
+- `/backup`
+- `/notify`
+- `/sleep` (plus offset/test variants)
+
+Examples:
+
+```
+/help
+/help teleport
+/commands
+/dumpcommands
+/version
+/ping
+/backup
+/sleep
+/sleep offset 120
+```
+
+### Server/admin
+
+- `/auth` (subcommands: `login`, `loginbrowser`, `logindevice`, `logout`, `status`, `select`, `cancel`, `persistence`)
+- `/stop`
+- `/kick`
+- `/who`
+- `/maxplayers`
+
+Examples:
+
+```
+/auth login <token-or-credentials>
+/auth loginbrowser
+/auth logindevice
+/auth status
+/auth select <profile>
+/auth persistence set <on|off>
+/auth logout
+/auth cancel
+/kick <player> [reason]
+/who
+/maxplayers 50
+/stop
+```
+
+### Player and inventory
+
+- `/gamemode`
+- `/give`
+- `/givearmor`
+- `/inventory` (clear/see/item/backpack)
+- `/kill`
+- `/damage`
+- `/hide` (show/hide players)
+- `/respawn`
+- `/reset`
+- `/viewradius` (get/set)
+- `/whereami`
+- `/whoami`
+- `/sudo`
+
+Examples:
+
+```
+/gamemode <adventure|creative|survival> [player]
+/give <player> <item-id> [count]
+/givearmor <player> <set-id>
+/inventory clear [player]
+/inventory see <player>
+/kill [player]
+/damage <amount> [player]
+/hide <player>
+/hide show <player>
+/respawn [player]
+/reset [player]
+/viewradius get [player]
+/viewradius set <radius> [player]
+/whereami [player]
+/whoami
+/sudo <player> <command...>
+```
+
+### Teleport and warp
+
+- `/teleport` (to player/coords, back, forward, home, top, world, all)
+- `/spawn` (set/go)
+- `/warp` (set/go/list/remove/reload)
+
+Examples:
+
+```
+/teleport <player>
+/teleport <x> <y> <z>
+/teleport <player> <x> <y> <z>
+/teleport back
+/teleport forward
+/teleport home
+/teleport top
+/teleport world <world-id>
+/teleport all <player>
+/spawn
+/spawn set
+/warp list
+/warp set <name>
+/warp go <name>
+/warp remove <name>
+/warp reload
+```
+
+### World, weather, and lighting
+
+- `/weather` (get/set/reset)
+- `/lighting` (get/info/invalidate/send/toggle)
+
+Examples:
+
+```
+/weather get
+/weather set <weather-id>
+/weather reset
+/lighting get
+/lighting info
+/lighting invalidate
+/lighting send global
+/lighting send local
+/lighting toggle
+```
+
+### Gameplay systems (likely admin/debug)
+
+- `/objective` (start/complete/history/panel/markers)
+- `/reputation` (add/set/rank/value)
+- `/memories` (capacity/level/unlock/clear)
+- `/npc` (spawn/debug/path/role/blackboard/etc.)
+- `/spawn` (markers/beacons/suppression/stats)
+- `/instances` (edit/load/list/migrate)
+- `/model` (set/reset)
+- `/camera` (player camera demos/effects)
+- `/mount` (mount/dismount)
+- `/parkour` (checkpoint add/remove/reset)
+- `/ambience`
+- `/portals`
+
+Examples:
+
+```
+/objective start <objective-id> [player]
+/objective complete <objective-id> [player]
+/reputation add <faction-id> <amount> [player]
+/reputation set <faction-id> <amount> [player]
+/memories clear [player]
+/memories unlock <memory-id> [player]
+/npc spawn <npc-id>
+/npc debug toggle
+/spawn markers add
+/spawn suppression dump
+/instances edit <instance-id>
+/instances list
+/model set <model-id> [player]
+/model reset [player]
+/camera demo activate
+/camera demo deactivate
+/mount [mount-id]
+/dismount [player]
+/parkour checkpoint add
+/parkour checkpoint remove
+/ambience clear
+/portals leave
+```
+
+### Builder tools (mostly creative/debug)
+
+- `/brushconfig`
+- `/prefabedit`
+- `/select`
+- `/copy` `/paste` `/undo` `/redo` (and other builder tool variants)
+
+Examples:
+
+```
+/brushconfig list
+/brushconfig load <name>
+/prefabedit create <name>
+/prefabedit save
+/select
+/copy
+/paste
+/undo [count]
+/redo [count]
+```
