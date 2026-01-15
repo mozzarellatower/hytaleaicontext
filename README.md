@@ -21,7 +21,7 @@ This repo separates sources:
 If you are an agent, start with:
 
 - `INSTRUCTIONS.MD` (workflow rules and scope)
-- `AGENTS.md` (task splits, if applicable)
+- Check for `AGENTS.md` locally (task splits used by Codex/agent runs; may not exist in the public repo)
 - `HytaleServer-Dissection.md` (JAR map and inferred guidance)
 
 ---
