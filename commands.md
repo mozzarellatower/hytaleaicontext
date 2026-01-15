@@ -42,7 +42,7 @@ This appears in the server log message: "Use /auth login to authenticate".
 
 Permissions are stored in `serverexample/permissions.json`. In this sample, the `OP` group has `"*"` (all permissions). If you add players or groups there, restart the server to apply changes.
 
-From sample mods in `tmp/mods/`, permissions APIs appear to include `PermissionsModule` and helpers like `setPermissionGroup(s)` (names observed in class strings). Use these as search anchors when exploring the server JAR or decompiled sources.
+From local sample mods (not included in this repo), permissions APIs appear to include `PermissionsModule` and helpers like `setPermissionGroup(s)` (names observed in class strings). Use these as search anchors when exploring the server JAR or decompiled sources.
 
 ## Mods and custom commands
 
@@ -50,7 +50,7 @@ Mods can register their own commands. Look for mod folders under `serverexample/
 
 ### Patterns seen in sample mods (heuristic)
 
-From string scans of sample `.jar` mods in `tmp/mods/`:
+From string scans of local sample `.jar` mods (not included in this repo):
 
 - Commands are registered through `CommandRegistry` and implemented with `AbstractCommand` or `AbstractAsyncCommand`.
 - Command execution uses `CommandContext` and `CommandSender`.

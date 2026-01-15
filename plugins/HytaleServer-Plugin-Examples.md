@@ -17,8 +17,174 @@ Practical examples for creating plugins that add functionality to Hytale servers
 9. [Economy System](#economy-system)
 10. [Teleportation System](#teleportation-system)
 11. [JAR-Inspired Skeletons](#jar-inspired-skeletons)
+12. [External Example Project Index](#external-example-project-index)
 
 ---
+
+## External Example Project Index
+
+External example projects (not included in this repo) are referenced by number/name. They are illustrative and not JAR-derived. Several use `plugin.json` as a placeholder; the server expects `manifest.json` at the JAR root (see `plugins/HytaleServer-Plugin-API.md`).
+
+Core scaffolds:
+- Example 01 - Hello World (minimal lifecycle + logger)
+- Example 02 - Event Listener (event registration patterns)
+- Example 03 - Config Plugin (config load/save workflow)
+- Example 04 - Custom Event (custom event definition + handler)
+- Example 05 - Component Example (custom ECS components)
+- Example 06 - Query System (ECS query/filter patterns)
+
+World + entities:
+- Example 07 - Spawn Entity (NPC spawning flows)
+- Example 08 - Custom NPC (roles/AI behavior stubs)
+- Example 09 - NPC Dialogue (dialogue tree scaffolding)
+- Example 10 - Block Placer (programmatic block placement)
+- Example 11 - Structure Generator (prefab/structure placement)
+- Example 12 - Custom Biome (biome registration outline)
+
+Player + teleport:
+- Example 13 - Player Data (per-player data tracking)
+- Example 14 - Warp System (named warp storage + teleport)
+- Example 15 - Player Stats (stats tracking + leaderboard)
+- Example 21 - Portal System (portal linking + teleport)
+
+Content + effects:
+- Example 16 - Custom Item (custom item definitions)
+- Example 17 - Custom Weapon (weapon data + abilities)
+- Example 18 - Crafting Recipe (recipe JSON patterns)
+- Example 19 - Weather Control (weather control hooks)
+- Example 20 - Custom Particles (particles, trails, auras)
+
+Gameplay + admin systems:
+- Example 22 - Quest System (objectives/quest chains)
+- Example 23 - Reputation Factions (reputation + factions)
+- Example 24 - Economy Plugin (balance + shop scaffolds)
+- Example 25 - Custom Command (arguments + subcommands)
+- Example 26 - Permissions Plugin (permissions + groups)
+- Example 27 - Moderation Tools (kick/ban/mute/warn flows)
+
+### Re-audit Findings (2026.01.13 JAR)
+
+Command + permissions mismatches:
+
+- The external command-system guide and examples 19, 20, 21, 25, 26, 27 use `com.hypixel.hytale.server.command.*` or `com.hypixel.hytale.api.command.*` packages that are not present in the JAR. Use `com.hypixel.hytale.server.core.command.system.*` (`AbstractCommand`, `CommandContext`, `CommandRegistry`, `CommandManager.get()`).
+- `TabCompleteHelper`, `ArgumentParser`, and annotation-driven commands (`@CommandInfo`, `@CommandHandler`) are not in the JAR; suggestions live under `com.hypixel.hytale.server.core.command.system.suggestion` and argument types under `com.hypixel.hytale.server.core.command.system.arguments.*`.
+- `CommandContext` in the JAR does not expose `getPermissionLevel` or Bukkit-like helpers. Use `CommandSender` (implements `PermissionHolder`) and `hasPermission(String[, boolean])` from `com.hypixel.hytale.server.core.permissions`.
+
+ECS + query mismatches:
+
+- Examples 05 and 06 treat `Store` as `Store<Object>` and access components by class; the JAR API uses `Store<EntityStore>` with `ComponentType<EntityStore, T>` (e.g., `MyComponent.getComponentType()`).
+- `Store.ensureComponent(...)` in the JAR is void; use `ensureAndGetComponent(...)` to retrieve the component after ensuring it exists.
+- `Store` is not instantiated directly (`new Store<>()`); it is provided by the server, and `addEntity(...)` expects an `Archetype` and `AddReason`.
+
+Player/entity mismatches:
+
+- Examples 07, 08, 09 import `com.hypixel.hytale.server.world.*` Store/EntityStore/Ref packages that do not exist; use `com.hypixel.hytale.component.Store`/`Ref` and `com.hypixel.hytale.server.core.universe.world.storage.EntityStore`.
+- Examples 13 and 14 use `com.hypixel.hytale.plugin.JavaPlugin` and `getEventBus()`/`getEntityStoreComponentRegistry()`/`getCommandRegistry().register(String, ...)`, which are not in the JAR. Use `com.hypixel.hytale.server.core.plugin.JavaPlugin` and registries from `PluginBase` (`getEventRegistry()`, `getCommandRegistry().registerCommand(...)`, `getEntityStoreRegistry()`).
+
+### JAR-Aligned Snippet Replacements (Non-Verbatim)
+
+Use these as drop-in patterns when adapting the external examples to the 2026.01.13 JAR.
+
+For `25-custom-command` and `27-moderation-tools` (commands + permissions):
+
+```java
+import com.hypixel.hytale.server.core.Message;
+import com.hypixel.hytale.server.core.command.system.AbstractCommand;
+import com.hypixel.hytale.server.core.command.system.CommandContext;
+import com.hypixel.hytale.server.core.command.system.arguments.system.RequiredArg;
+import com.hypixel.hytale.server.core.command.system.arguments.types.ArgTypes;
+import java.util.concurrent.CompletableFuture;
+
+public final class KickCommand extends AbstractCommand {
+    private final RequiredArg<String> targetArg =
+        new RequiredArg<>(this, "target", "Target name", ArgTypes.STRING);
+
+    public KickCommand() {
+        super("kick", "Kick a player");
+    }
+
+    @Override
+    protected CompletableFuture<Void> execute(CommandContext context) {
+        if (!context.sender().hasPermission("example.kick")) {
+            context.sendMessage(Message.raw("No permission."));
+            return CompletableFuture.completedFuture(null);
+        }
+        String target = targetArg.get(context);
+        context.sendMessage(Message.raw("Kicked " + target));
+        return CompletableFuture.completedFuture(null);
+    }
+}
+```
+
+For `05-component-example` (component registration + usage):
+
+```java
+import com.hypixel.hytale.component.ComponentType;
+import com.hypixel.hytale.component.Ref;
+import com.hypixel.hytale.component.Store;
+import com.hypixel.hytale.server.core.universe.world.storage.EntityStore;
+
+private ComponentType<EntityStore, CustomData> customType;
+
+@Override
+protected void setup() {
+    customType = getEntityStoreRegistry()
+        .registerComponent(CustomData.class, "custom_data", CustomData.CODEC);
+}
+
+public void attachData(Ref<EntityStore> ref) {
+    Store<EntityStore> store = ref.getStore();
+    store.addComponent(ref, customType, new CustomData());
+    CustomData data = store.getComponent(ref, customType);
+}
+```
+
+For `06-query-system` (querying by component types):
+
+```java
+import com.hypixel.hytale.component.Archetype;
+import com.hypixel.hytale.component.query.Query;
+
+Query<EntityStore> hasCustomData = Archetype.of(customType);
+store.forEachChunk(hasCustomData, (chunk, buffer) -> {
+    // Iterate chunk entries and operate on entities that have customType.
+});
+```
+
+For `13-player-data` (player connect/disconnect wiring):
+
+```java
+import com.hypixel.hytale.server.core.event.events.player.PlayerConnectEvent;
+import com.hypixel.hytale.server.core.event.events.player.PlayerDisconnectEvent;
+import com.hypixel.hytale.server.core.universe.PlayerRef;
+
+getEventRegistry().register(PlayerConnectEvent.class, event -> {
+    PlayerRef playerRef = event.getPlayerRef();
+    Ref<EntityStore> ref = playerRef.getReference();
+    ref.getStore().addComponent(ref, customType, new CustomData());
+});
+
+getEventRegistry().register(PlayerDisconnectEvent.class, event -> {
+    PlayerRef playerRef = event.getPlayerRef();
+    Ref<EntityStore> ref = playerRef.getReference();
+    CustomData data = ref.getStore().getComponent(ref, customType);
+    // Persist data as needed.
+});
+```
+
+For `14-warp-system` (teleport component usage):
+
+```java
+import com.hypixel.hytale.math.vector.Vector3d;
+import com.hypixel.hytale.math.vector.Vector3f;
+import com.hypixel.hytale.server.core.modules.entity.teleport.Teleport;
+import com.hypixel.hytale.server.core.universe.world.World;
+
+public void teleportPlayer(Ref<EntityStore> ref, World world, Vector3d pos, Vector3f rot) {
+    ref.getStore().addComponent(ref, Teleport.getComponentType(),
+        new Teleport(world, pos, rot));
+}
+```
 
 ## Custom Commands
 

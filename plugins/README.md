@@ -7,7 +7,7 @@ This folder contains documentation for developing Hytale server plugins.
 | File | Description |
 |------|-------------|
 | [HytaleServer-Plugin-API.md](./HytaleServer-Plugin-API.md) | Complete API reference for plugin development |
-| [HytaleServer-Plugin-Examples.md](./HytaleServer-Plugin-Examples.md) | 21 practical plugin examples |
+| [HytaleServer-Plugin-Examples.md](./HytaleServer-Plugin-Examples.md) | Practical examples plus external example index (27 projects) |
 | [Structures-Guide.md](./Structures-Guide.md) | Guide for saving and loading structures (prefabs) |
 
 ## Quick Links
@@ -44,8 +44,15 @@ This folder contains documentation for developing Hytale server plugins.
 19. Spawn System
 20. Report System
 21. Daily Rewards
+22. Custom Items and Weapons
+23. Crafting Recipes
+24. Weather and Particles
+25. Portals and Warps
+26. Quests and Reputation
+27. Permissions and Moderation
+
+External example projects are referenced in `plugins/HytaleServer-Plugin-Examples.md`.
 
 ## See Also
 
 - [../HytaleServer.md](../HytaleServer.md) - Server documentation and CLI options
-- [../tmp/mods-scan-assets.md](../tmp/mods-scan-assets.md) - Content pack layout from sample mods

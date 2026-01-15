@@ -10,12 +10,14 @@ This guide is based on inspecting `HytaleServer.jar` (build `2026.01.13-dcad8778
 2. [Plugin Structure](#plugin-structure)
 3. [Lifecycle Methods](#lifecycle-methods)
 4. [Event System](#event-system)
-5. [Command System](#command-system)
-6. [Configuration](#configuration)
-7. [Registries Reference](#registries-reference)
-8. [Asset Packs](#asset-packs)
-9. [Dependencies](#dependencies)
-10. [Complete Examples](#complete-examples)
+5. [Component System](#component-system)
+6. [Command System](#command-system)
+7. [Configuration](#configuration)
+8. [Registries Reference](#registries-reference)
+9. [Asset Packs](#asset-packs)
+10. [Dependencies](#dependencies)
+11. [External Example Guides](#external-example-guides)
+12. [Complete Examples](#complete-examples)
 
 ---
 
@@ -621,6 +623,24 @@ From `https://hytalemodding.dev/en/docs/server/events`:
 - `registerUnhandled(...)` and `registerAsyncUnhandled(...)` for unhandled events
 - Keyed events via `register(Class, KeyType, Consumer)` and async equivalents
 
+## Component System
+
+The ECS lives under `com.hypixel.hytale.component` in the server JAR. Core types you will see in signatures:
+
+- `Store<ECS_TYPE>` and `Ref<ECS_TYPE>` for component storage and references
+- `Holder<ECS_TYPE>` for grouped component data
+- `Component`, `ComponentType`, `ComponentRegistry`, and `ComponentRegistryProxy`
+- `ReadWriteQuery` and helpers under `com.hypixel.hytale.component.query`
+- System base classes under `com.hypixel.hytale.component.system` (`System`, `StoreSystem`, `RefSystem`, `HolderSystem`, `RefChangeSystem`)
+
+Entity components are stored in `com.hypixel.hytale.server.core.universe.world.storage.EntityStore` and typically accessed via `Store<EntityStore>` and `Ref<EntityStore>`. Plugin registries expose `getEntityStoreRegistry()` and `getChunkStoreRegistry()` for component systems (see Registries Reference).
+
+Practical notes from the JAR:
+
+- `Store` component APIs use `ComponentType` (not Java classes). Many built-in components expose a `getComponentType()` static.
+- `Store.ensureComponent(...)` returns void; use `ensureAndGetComponent(...)` to retrieve a component after ensuring it exists.
+- `Store.addEntity(...)` expects an `Archetype` and `AddReason`; the store is supplied by the server, not constructed manually.
+
 ## Command System
 
 ### Creating a Command
@@ -645,7 +665,7 @@ public class HelloCommand extends AbstractCommand {
 
 ### Observed in Sample Mods (Heuristic)
 
-String scans of `.jar` mods in `tmp/mods/` show common use of:
+String scans of local `.jar` sample mods (not included in this repo) show common use of:
 
 - `CommandRegistry` for registration
 - `CommandContext` and `CommandSender` during execution
@@ -694,6 +714,50 @@ protected void execute(CommandContext commandContext,
 
 ```java
 protected abstract CompletableFuture<Void> execute(CommandContext context);
+```
+
+### Arguments and Suggestions (JAR Example)
+
+This example uses the JAR argument system (`RequiredArg`, `OptionalArg`, `ArgTypes`) and the built-in suggestion API:
+
+```java
+import com.hypixel.hytale.server.core.Message;
+import com.hypixel.hytale.server.core.command.system.AbstractCommand;
+import com.hypixel.hytale.server.core.command.system.CommandContext;
+import com.hypixel.hytale.server.core.command.system.arguments.system.OptionalArg;
+import com.hypixel.hytale.server.core.command.system.arguments.system.RequiredArg;
+import com.hypixel.hytale.server.core.command.system.arguments.types.ArgTypes;
+import com.hypixel.hytale.server.core.command.system.suggestion.SuggestionProvider;
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
+
+public final class WarnCommand extends AbstractCommand {
+    private final RequiredArg<String> targetArg =
+        new RequiredArg<>(this, "target", "Target name", ArgTypes.STRING)
+            .suggest((sender, input, argIndex, result) -> {
+                result.fuzzySuggest(input, List.of("Alice", "Bob"), s -> s);
+            });
+
+    private final OptionalArg<String> reasonArg =
+        new OptionalArg<>(this, "reason", "Reason", ArgTypes.STRING);
+
+    public WarnCommand() {
+        super("warn", "Warn a player");
+    }
+
+    @Override
+    protected CompletableFuture<Void> execute(CommandContext context) {
+        if (!context.sender().hasPermission("example.warn")) {
+            context.sendMessage(Message.raw("No permission."));
+            return CompletableFuture.completedFuture(null);
+        }
+
+        String target = targetArg.get(context);
+        String reason = reasonArg.provided(context) ? reasonArg.get(context) : "No reason";
+        context.sendMessage(Message.raw("Warned " + target + ": " + reason));
+        return CompletableFuture.completedFuture(null);
+    }
+}
 ```
 
 ### Registering Commands
@@ -977,6 +1041,16 @@ if (plugin instanceof WebServerPlugin webServer) {
 ```
 
 See public example plugins for real-world usage patterns.
+
+## External Example Guides
+
+Claude-generated guides are external and not JAR-derived. Use them as conceptual scaffolding and verify API names against `serverexample/Server/HytaleServer.jar` or the decompiled repo.
+
+Key corrections when adapting those guides:
+
+- Replace `plugin.json` with `manifest.json` at the JAR root (see Plugin Structure).
+- Use `com.hypixel.hytale.server.core.command.system.*` (`AbstractCommand`, `CommandRegistry`) instead of `com.hypixel.hytale.server.command.*`.
+- Confirm ECS types with `com.hypixel.hytale.component.*` and `EntityStore` paths described in Component System.
 
 ## Complete Examples
 

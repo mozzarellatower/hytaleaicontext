@@ -11,8 +11,8 @@ Community-driven documentation for Hytale dedicated servers, reverse-engineered 
 This repo separates sources:
 
 - JAR-derived facts: extracted from `serverexample/Server/HytaleServer.jar` or server logs.
-- Sample mods: observations from files in `tmp/mods/`.
-- External claims: sourced from public docs or community sources and explicitly labeled.
+- Sample mods: observations from local sample mods (not included in this repo).
+- External claims: sourced from public docs or community sources and explicitly labeled (includes `https://github.com/Ranork/Hytale-Server-Unpacked`).
 
 ---
 
@@ -47,7 +47,6 @@ Additional docs:
 - Command examples: `commandexamples.md`
 - Command mod notes: `commandmod.md`
 - Permissions notes: `permissions_java.md`
-- Sample mods scan (content packs): `tmp/mods-scan-assets.md`
 
 ---
 
@@ -199,7 +198,7 @@ class MyCommand extends AbstractCommand {
 
 ## Modding Patterns (From Sample Mods)
 
-These are high-level, non-verbatim patterns observed from sample mods in `tmp/mods/`:
+These are high-level, non-verbatim patterns observed from local sample mods (not included in this repo):
 
 - Blocks: JSON item definitions under `Server/Item/Items/...` with `BlockType`, plus optional hitboxes, groups, and recipes.
 - Tools/usable items: item JSON with `Interactions` + separate interaction JSONs and root interaction mapping.
@@ -216,7 +215,7 @@ Additional references:
 
 ## Example Plugins Included
 
-The examples doc includes complete, working code for:
+The examples doc includes conceptual patterns plus an external example project index:
 
 | Category | Examples |
 |----------|----------|
@@ -249,7 +248,6 @@ The examples doc includes complete, working code for:
 ├── serverexample/
 │   └── Server/
 │       └── HytaleServer.jar
-└── tmp/  # scratch, ignored
 ```
 
 ---

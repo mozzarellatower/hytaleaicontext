@@ -67,7 +67,7 @@ See `HytaleServer-Dissection.md` for package-level references to prefab tooling:
 
 ## Asset Pack Layout (Sample Mods)
 
-Examples from content packs (`.zip`) in `tmp/mods/` show a common layout:
+Examples from local content packs (`.zip`) (not included in this repo) show a common layout:
 
 ```
 manifest.json

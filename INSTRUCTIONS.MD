@@ -7,7 +7,7 @@ This repo documents and dissects Hytale server and modding data. Follow these in
 - Follow `AGENTS.md` if the task is split across agents.
 
 ## Scope and Sources
-- Primary sources: `HytaleServer.jar` (in `serverexample/Server/`) and sample mods in `tmp/mods/`.
+- Primary sources: `HytaleServer.jar` (in `serverexample/Server/`) and local sample mods (not included in this repo).
 - When using external sources, clearly label them as external/unverified.
 - Do not claim official support for inferred behavior.
 
@@ -31,7 +31,7 @@ This repo documents and dissects Hytale server and modding data. Follow these in
 - State the source category (JAR, sample mod, external) when adding new facts.
 - Add file/path anchors for inferred guidance.
 - Avoid copying content verbatim from mods; summarize patterns.
-- Keep `tmp/` artifacts for evidence but do not treat them as published docs.
+- Keep scratch artifacts local for evidence but do not treat them as published docs.
 
 ## Safety and Style
 - Use ASCII only.

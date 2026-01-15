@@ -274,7 +274,7 @@ Early plugin loader (separate system):
 - `com.hypixel.hytale.plugin.early.EarlyPluginLoader`
 - `com.hypixel.hytale.plugin.early.TransformingClassLoader`
 
-## Mod Packaging Conventions (From Sample Mods in tmp/mods)
+## Mod Packaging Conventions (From Local Sample Mods)
 
 From 18 sample mods (11 `.jar`, 7 `.zip`), each contained a root-level `manifest.json`.
 
@@ -294,7 +294,7 @@ These samples suggest:
 
 ## Mod Load Order Notes (Sample Mods)
 
-Observed mod-to-mod dependencies from `tmp/mods/` indicate load order requirements:
+Observed mod-to-mod dependencies from local sample mods indicate load order requirements:
 
 - `Serilum:Hybrid` is required by `Serilum:InfiniteMana` and `Serilum:TreeHarvester`.
 - `Darkhax:Spellbook` is required by `Darkhax:WaybackCharm`.
@@ -625,5 +625,5 @@ These examples are derived from class names above; confirm APIs before implement
 
 ## Changelog (Doc Updates)
 
-- Added mod load-order notes based on sample mods in `tmp/mods/`.
+- Added mod load-order notes based on local sample mods (not included in this repo).
 - Added practical patterns for blocks, tools, and UI from sample mod layouts.

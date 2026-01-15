@@ -201,7 +201,7 @@ These appear to map older block names or rotated variants to updated identifiers
 
 ## Asset Pack Layout (Sample Mods)
 
-Observed in content packs (`.zip`) under `tmp/mods/`:
+Observed in content packs (`.zip`) from local sample mods (not included in this repo):
 
 ```
 manifest.json
