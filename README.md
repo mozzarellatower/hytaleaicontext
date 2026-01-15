@@ -1,6 +1,3 @@
-<<<<<<< HEAD
-# hytaleassetcontext
-=======
 # Hytale Server Documentation (Unofficial)
 
 Community-driven documentation for Hytale dedicated servers, reverse-engineered from `HytaleServer.jar`.
@@ -55,7 +52,11 @@ public final class MyPlugin extends JavaPlugin {
   "Group": "MyName",
   "Name": "MyPlugin",
   "Authors": [
-    "YourName"
+    {
+      "Name": "Your Name",
+      "Email": "you@example.com",
+      "Url": "https://example.com"
+    }
   ],
   "Version": "1.0.0",
   "Main": "com.example.MyPlugin",
@@ -307,4 +308,3 @@ This documentation is provided for educational purposes. Hytale and related trad
 ---
 
 *Last updated: January 2026*
->>>>>>> f4bfcd4 (First commit)
