@@ -10,6 +10,244 @@ not a full API reference.
 - Alternate entry: `com.hypixel.hytale.LateMain`
 - Version: `2026.01.13-dcad8778f`
 - Java: 21 (build JDK spec 25)
+- Maven coords: `com.hypixel.hytale:Server:2026.01.13-dcad8778f`
+- Manifest revision: `dcad8778f19e4e56af55d74b58575c91c50a018d`
+
+## Package Map (Top-Level Namespaces)
+
+Top-level package roots under `com.hypixel.hytale` (from `jar tf`):
+
+- `assetstore` (asset pack registry, codecs, iterators)
+- `builtin` (built-in plugins such as worldgen, builder tools, NPC systems)
+- `codec` (data codecs, schema, validation, lookup)
+- `common` (collections, threading, semver, util)
+- `component` (ECS-style component system)
+- `event` (event buses and registries)
+- `function` (functional helpers)
+- `logger` (logger facade, backends, sentry)
+- `math` (vectors, matrices, random, shapes)
+- `metrics` (executor metrics, init tracing)
+- `plugin` (early plugin loader)
+- `procedurallib` (procedural generation helpers)
+- `protocol` (network protocol classes)
+- `registry` (registries and keys)
+- `server` (core server runtime)
+- `sneakythrow` (exception helper)
+- `storage` (storage and persistence)
+- `unsafe` (unsafe helpers)
+
+## Package Map (Server Runtime)
+
+Top-level server runtime packages under `com.hypixel.hytale.server`:
+
+- `core` (main server runtime and subsystems)
+- `flock` (flocking AI systems)
+- `migrations` (data migrations)
+- `npc` (NPC systems and built-in NPC plugin)
+- `spawning` (spawner systems)
+- `worldgen` (world generation support)
+
+Core subsystems under `com.hypixel.hytale.server.core`:
+
+- `asset`, `auth`, `blocktype`, `client`, `codec`, `command`, `console`
+- `cosmetics`, `entity`, `event`, `inventory`, `io`, `meta`, `modules`
+- `permissions`, `plugin`, `prefab`, `receiver`, `registry`, `task`
+- `ui`, `universe`, `util`
+
+## Package Map (Protocol and Data Types)
+
+Protocol packages under `com.hypixel.hytale.protocol`:
+
+- `io` (packet I/O, varints, validation, netty encoder/decoder)
+- `packets` (network packet groupings)
+  - `asseteditor`, `assets`, `auth`, `buildertools`, `camera`, `connection`
+  - `entities`, `interaction`, `interface_`, `inventory`, `machinima`
+  - `player`, `serveraccess`, `setup`, `window`, `world`, `worldmap`
+
+The protocol root also contains many data classes (e.g., assets, blocks, items, interactions).
+
+Packet group samples (class prefixes under `com.hypixel.hytale.protocol.packets.*`):
+
+- `asseteditor` (73): `AssetEditor*` (create/update/delete assets, asset packs, schemas)
+- `assets` (47): `Update*` (asset registry updates for blocks, items, audio, fx, etc.)
+- `auth` (10): `Auth*`, `Password*`, `ConnectAccept`
+- `buildertools` (47): `BuilderTool*`, `Prefab*`, `EntityToolAction`
+- `camera` (5): `SetServerCamera`, `SetFlyCameraMode`
+- `connection` (8): `Connect`, `Disconnect`, `Ping`, `Pong`
+- `entities` (8): `EntityUpdates`, `ApplyKnockback`, `PlayAnimation`
+- `interaction` (7): `SyncInteractionChain*`, `PlayInteractionFor`
+- `interface_` (42): `CustomPage*`, `CustomUI*`, `ChatMessage`, `ServerInfo`
+- `inventory` (11): `InventoryAction`, `MoveItemStack`, `UpdatePlayerInventory`
+- `machinima` (5): `UpdateMachinimaScene`, `SetMachinimaActorModel`
+- `player` (21): `JoinWorld`, `ClientMovement`, `SetGameMode`, `UpdateMovementSettings`
+- `serveraccess` (5): `RequestServerAccess`, `SetServerAccess`, `UpdateServerAccess`
+- `setup` (17): `RequestAssets`, `AssetInitialize`, `WorldLoadProgress`, `ViewRadius`
+- `window` (17): `OpenWindow`, `CraftItemAction`, `UpdateWindow`
+- `world` (36): `SetChunk`, `UpdateTime`, `ServerSetBlock`, `UpdateWeather`
+- `worldmap` (12): `UpdateWorldMap`, `MapChunk`, `MapMarker`
+
+## Package Map (Procedural Library)
+
+`com.hypixel.hytale.procedurallib` subpackages:
+
+- `condition`, `json`, `logic`, `property`, `random`, `supplier`, `util`
+- Noise helpers: `NoiseFunction`, `NoiseFunction2d`, `NoiseFunction3d`, `NoiseType`
+
+## Package Map (Registry and Storage)
+
+- `com.hypixel.hytale.registry` (Registry, Registration)
+- `com.hypixel.hytale.storage` (IndexedStorageFile, legacy `IndexedStorageFile_v0`)
+
+## Package Map (UI)
+
+Server UI tooling in `com.hypixel.hytale.server.core.ui`:
+
+- `browser` (server file browser)
+- `builder` (UI command/event builders)
+
+## Built-in Plugin Package Roots
+
+Package roots under `com.hypixel.hytale.builtin`:
+
+- `adventure` (objectives, reputation, shop, stash, teleporter, etc.)
+- `ambience`, `asseteditor`, `beds`, `blockphysics`, `blockspawner`
+- `blocktick`, `buildertools`, `commandmacro`, `crafting`, `creativehub`
+- `crouchslide`, `deployables`, `fluid`, `hytalegenerator`, `instances`
+- `landiscovery`, `mantling`, `model`, `mounts`, `npccombatactionevaluator`
+- `npceditor`, `parkour`, `path`, `portals`, `safetyroll`, `sprintforce`
+- `tagset`, `teleport`, `weather`, `worldgen`
+
+## Core Module Packages
+
+Modules under `com.hypixel.hytale.server.core.modules`:
+
+- `accesscontrol`, `block`, `blockhealth`, `blockset`, `camera`
+- `collision`, `debug`, `entity`, `entitystats`, `entityui`
+- `i18n`, `interaction`, `item`, `migrations`, `physics`
+- `prefabspawner`, `projectile`, `serverplayerlist`
+- `singleplayer`, `splitvelocity`, `time`
+
+## Built-in Plugin Manifests (manifests.json)
+
+The JAR includes `manifests.json` with 46 plugin entries and one plugin with two sub-plugins.
+
+Sub-plugins:
+- `Hytale:NPC` -> `Spawning`, `Flock`
+
+Plugin list (Group:Name -> Main):
+- Hytale:AssetEditor -> com.hypixel.hytale.builtin.asseteditor.AssetEditorPlugin
+- Hytale:BlockSpawner -> com.hypixel.hytale.builtin.blockspawner.BlockSpawnerPlugin
+- Hytale:BlockTick -> com.hypixel.hytale.builtin.blocktick.BlockTickPlugin
+- Hytale:BlockPhysics -> com.hypixel.hytale.builtin.blockphysics.BlockPhysicsPlugin
+- Hytale:BuilderTools -> com.hypixel.hytale.builtin.buildertools.BuilderToolsPlugin
+- Hytale:Crafting -> com.hypixel.hytale.builtin.crafting.CraftingPlugin
+- Hytale:CommandMacro -> com.hypixel.hytale.builtin.commandmacro.MacroCommandPlugin
+- Hytale:Instances -> com.hypixel.hytale.builtin.instances.InstancesPlugin
+- Hytale:LANDiscovery -> com.hypixel.hytale.builtin.landiscovery.LANDiscoveryPlugin
+- Hytale:NPC -> com.hypixel.hytale.server.npc.NPCPlugin
+- Hytale:NPCObjectives -> com.hypixel.hytale.builtin.adventure.npcobjectives.NPCObjectivesPlugin
+- Hytale:ObjectiveReputation -> com.hypixel.hytale.builtin.adventure.objectivereputation.ObjectiveReputationPlugin
+- Hytale:Objectives -> com.hypixel.hytale.builtin.adventure.objectives.ObjectivePlugin
+- Hytale:ObjectiveShop -> com.hypixel.hytale.builtin.adventure.objectiveshop.ObjectiveShopPlugin
+- Hytale:Path -> com.hypixel.hytale.builtin.path.PathPlugin
+- Hytale:Reputation -> com.hypixel.hytale.builtin.adventure.reputation.ReputationPlugin
+- Hytale:NPCReputation -> com.hypixel.hytale.builtin.adventure.npcreputation.NPCReputationPlugin
+- Hytale:Shop -> com.hypixel.hytale.builtin.adventure.shop.ShopPlugin
+- Hytale:ShopReputation -> com.hypixel.hytale.builtin.adventure.shopreputation.ShopReputationPlugin
+- Hytale:NPCShop -> com.hypixel.hytale.builtin.adventure.npcshop.NPCShopPlugin
+- Hytale:NPCEditor -> com.hypixel.hytale.builtin.npceditor.NPCEditorPlugin
+- Hytale:Stash -> com.hypixel.hytale.builtin.adventure.stash.StashPlugin
+- Hytale:TagSet -> com.hypixel.hytale.builtin.tagset.TagSetPlugin
+- Hytale:Teleport -> com.hypixel.hytale.builtin.teleport.TeleportPlugin
+- Hytale:Fluid -> com.hypixel.hytale.builtin.fluid.FluidPlugin
+- Hytale:Weather -> com.hypixel.hytale.builtin.weather.WeatherPlugin
+- Hytale:WorldGen -> com.hypixel.hytale.builtin.worldgen.WorldGenPlugin
+- Hytale:Farming -> com.hypixel.hytale.builtin.adventure.farming.FarmingPlugin
+- Hytale:Camera -> com.hypixel.hytale.builtin.adventure.camera.CameraPlugin
+- Hytale:WorldLocationCondition -> com.hypixel.hytale.builtin.adventure.worldlocationcondition.WorldLocationConditionPlugin
+- Hytale:NPCCombatActionEvaluator -> com.hypixel.hytale.builtin.npccombatactionevaluator.NPCCombatActionEvaluatorPlugin
+- Hytale:Model -> com.hypixel.hytale.builtin.model.ModelPlugin
+- Hytale:Mantling -> com.hypixel.hytale.builtin.mantling.MantlingPlugin
+- Hytale:SafetyRoll -> com.hypixel.hytale.builtin.safetyroll.SafetyRollPlugin
+- Hytale:SprintForce -> com.hypixel.hytale.builtin.sprintforce.SprintForcePlugin
+- Hytale:CrouchSlide -> com.hypixel.hytale.builtin.crouchslide.CrouchSlidePlugin
+- Hytale:Parkour -> com.hypixel.hytale.builtin.parkour.ParkourPlugin
+- Hytale:Mounts -> com.hypixel.hytale.builtin.mounts.MountPlugin
+- Hytale:HytaleGenerator -> com.hypixel.hytale.builtin.hytalegenerator.plugin.HytaleGenerator
+- Hytale:Teleporter -> com.hypixel.hytale.builtin.adventure.teleporter.TeleporterPlugin
+- Hytale:Memories -> com.hypixel.hytale.builtin.adventure.memories.MemoriesPlugin
+- Hytale:Deployables -> com.hypixel.hytale.builtin.deployables.DeployablesPlugin
+- Hytale:Portals -> com.hypixel.hytale.builtin.portals.PortalsPlugin
+- Hytale:Beds -> com.hypixel.hytale.builtin.beds.BedsPlugin
+- Hytale:Ambience -> com.hypixel.hytale.builtin.ambience.AmbiencePlugin
+- Hytale:CreativeHub -> com.hypixel.hytale.builtin.creativehub.CreativeHubPlugin
+
+## Built-in Plugin Dependency Graph (manifests.json)
+
+Each entry lists required and optional dependencies as declared in the manifest.
+
+- Hytale:Ambience -> required: Hytale:EntityModule; optional: none
+- Hytale:AssetEditor -> required: Hytale:I18nModule, Hytale:ItemModule, Hytale:Model; optional: none
+- Hytale:Beds -> required: Hytale:Mounts; optional: none
+- Hytale:BlockPhysics -> required: Hytale:BlockTick, Hytale:BlockTypeModule; optional: none
+- Hytale:BlockSpawner -> required: Hytale:BlockModule, Hytale:BlockStateModule, Hytale:I18nModule; optional: none
+- Hytale:BlockTick -> required: Hytale:LegacyModule; optional: none
+- Hytale:BuilderTools -> required: Hytale:EntityModule; optional: none
+- Hytale:Camera -> required: Hytale:AssetModule, Hytale:DamageModule, Hytale:InteractionModule; optional: none
+- Hytale:CommandMacro -> required: none; optional: none
+- Hytale:Crafting -> required: Hytale:BlockStateModule, Hytale:EntityModule, Hytale:InteractionModule; optional: none
+- Hytale:CreativeHub -> required: Hytale:I18nModule, Hytale:Instances; optional: none
+- Hytale:CrouchSlide -> required: none; optional: none
+- Hytale:Deployables -> required: none; optional: none
+- Hytale:Farming -> required: Hytale:BlockPhysics, Hytale:BlockStateModule, Hytale:InteractionModule; optional: none
+- Hytale:Fluid -> required: Hytale:BlockTick, Hytale:LegacyModule; optional: none
+- Hytale:HytaleGenerator -> required: none; optional: none
+- Hytale:Instances -> required: Hytale:BlockPhysics, Hytale:BlockStateModule, Hytale:I18nModule; optional: none
+- Hytale:LANDiscovery -> required: none; optional: none
+- Hytale:Mantling -> required: none; optional: none
+- Hytale:Memories -> required: Hytale:NPC; optional: none
+- Hytale:Model -> required: none; optional: none
+- Hytale:Mounts -> required: Hytale:DamageModule, Hytale:NPC; optional: none
+- Hytale:NPC -> required: Hytale:AssetModule, Hytale:DamageModule, Hytale:EntityModule, Hytale:EntityStatsModule, Hytale:TagSet; optional: Hytale:Objectives, Hytale:Path, Hytale:Teleport
+- Hytale:NPCCombatActionEvaluator -> required: Hytale:NPC; optional: none
+- Hytale:NPCEditor -> required: Hytale:AssetEditor, Hytale:NPC; optional: none
+- Hytale:NPCObjectives -> required: Hytale:NPC, Hytale:Objectives, Hytale:Spawning, Hytale:TagSet; optional: none
+- Hytale:NPCReputation -> required: Hytale:NPC, Hytale:Reputation, Hytale:TagSet; optional: none
+- Hytale:NPCShop -> required: Hytale:I18nModule, Hytale:NPC, Hytale:Shop; optional: none
+- Hytale:ObjectiveReputation -> required: Hytale:Objectives, Hytale:Reputation; optional: none
+- Hytale:ObjectiveShop -> required: Hytale:Objectives, Hytale:Shop; optional: none
+- Hytale:Objectives -> required: Hytale:BlockStateModule, Hytale:EntityModule, Hytale:I18nModule, Hytale:InteractionModule; optional: none
+- Hytale:Parkour -> required: Hytale:EntityModule; optional: none
+- Hytale:Path -> required: Hytale:BuilderTools, Hytale:EntityModule; optional: none
+- Hytale:Portals -> required: Hytale:Ambience, Hytale:Instances, Hytale:NPC; optional: none
+- Hytale:Reputation -> required: Hytale:I18nModule; optional: none
+- Hytale:SafetyRoll -> required: none; optional: none
+- Hytale:Shop -> required: Hytale:InteractionModule; optional: none
+- Hytale:ShopReputation -> required: Hytale:Reputation, Hytale:Shop; optional: none
+- Hytale:SprintForce -> required: none; optional: none
+- Hytale:Stash -> required: Hytale:BlockStateModule, Hytale:ItemModule; optional: none
+- Hytale:TagSet -> required: none; optional: none
+- Hytale:Teleport -> required: Hytale:EntityModule, Hytale:I18nModule; optional: none
+- Hytale:Teleporter -> required: Hytale:BlockStateModule, Hytale:Teleport; optional: none
+- Hytale:Weather -> required: Hytale:EntityModule; optional: none
+- Hytale:WorldGen -> required: Hytale:EntityModule; optional: none
+- Hytale:WorldLocationCondition -> required: none; optional: none
+
+## Embedded Third-Party Libraries (Package Roots)
+
+The JAR is shaded and includes common libraries under these package roots:
+
+- `ch.randelshofer.fastdoubleparser`
+- `com.github.luben.zstd`
+- `com.google.gson`, `com.google.protobuf`, `com.google.crypto.tink`
+- `com.nimbusds`
+- `io.netty`, `io.sentry`
+- `it.unimi` (fastutil)
+- `joptsimple`
+- `org.bouncycastle`, `org.bson`
+- `org.checkerframework`
+- `org.fusesource`
+- `org.jline`
 
 ## Plugin System (Observed Classes)
 
@@ -35,6 +273,84 @@ Early plugin loader (separate system):
 
 - `com.hypixel.hytale.plugin.early.EarlyPluginLoader`
 - `com.hypixel.hytale.plugin.early.TransformingClassLoader`
+
+## Mod Packaging Conventions (From Sample Mods in tmp/mods)
+
+From 18 sample mods (11 `.jar`, 7 `.zip`), each contained a root-level `manifest.json`.
+
+Observed patterns:
+- JAR mods include a `Main` entry in `manifest.json`.
+- ZIP mods (content packs) omit `Main` and list only metadata.
+- Dependencies are declared by `Group:Name` identifiers (including mod-to-mod deps).
+
+Examples of dependency strings seen:
+- `Hytale:AccessControlModule`, `Hytale:EntityModule`, `Hytale:InteractionModule`
+- `Serilum:Hybrid` (mod-to-mod)
+- `Darkhax:Spellbook` (mod-to-mod)
+
+These samples suggest:
+- `manifest.json` is expected at the archive root.
+- ZIP mods are likely content packs (data/asset), not code plugins.
+
+## Mod Load Order Notes (Sample Mods)
+
+Observed mod-to-mod dependencies from `tmp/mods/` indicate load order requirements:
+
+- `Serilum:Hybrid` is required by `Serilum:InfiniteMana` and `Serilum:TreeHarvester`.
+- `Darkhax:Spellbook` is required by `Darkhax:WaybackCharm`.
+
+Treat these as mod-specific requirements and ensure dependency mods load first.
+
+## Practical Patterns From Sample Mods (Non-verbatim)
+
+The following guidance is derived from file layouts and JSON shapes seen in sample mods. It is a practical starting point, not an official API reference.
+
+### Add Blocks (Data Pack Style)
+
+Typical layout:
+- `Server/Item/Items/...` for item/block definitions (JSON)
+- `Server/Item/Block/Hitboxes/...` for hitbox definitions (JSON)
+- `Server/Item/Groups/...` for block grouping (JSON)
+- `Server/Item/Recipes/...` for crafting recipes (JSON)
+- `Server/Languages/...` for localized strings (LANG)
+- Textures/models under `Blocks/`, `BlockTextures/`, `Items/`, and `Icons/ItemsGenerated`
+
+Minimal approach:
+1. Create an item JSON under `Server/Item/Items/<your_folder>/Your_Block.json`.
+2. Include a `BlockType` section with material, draw type, sounds, particles, and textures or models.
+3. Reference a hitbox JSON under `Server/Item/Block/Hitboxes/...` if the block is not a basic cube.
+4. Add an icon texture and localized name/description keys.
+5. Optionally add a recipe JSON under `Server/Item/Recipes/...` and group entry under `Server/Item/Groups/...`.
+
+### Add Tools or Usable Items
+
+Typical layout:
+- Item definition JSON under `Server/Item/Items/...`
+- Interaction definitions under `Server/Item/Interactions/Item/...`
+- Root interaction mapping under `Server/Item/RootInteractions/...`
+
+Minimal approach:
+1. Define the item with `Categories` like `Items.Tools`, model/texture, and icon properties.
+2. Add an `Interactions` map on the item that points to interaction IDs.
+3. Create interaction JSON files with a `Type` pointing at the plugin interaction handler.
+4. Add a root interaction JSON to allow the item to trigger actions in a specific context (e.g., creative).
+
+This pattern lets a code plugin handle behavior while the content pack defines how the item is presented and invoked.
+
+### Add UI Pages (Custom UI)
+
+Typical layout:
+- UI page definitions under `Common/UI/Custom/Pages/...` (`.ui` files)
+- UI images under `Common/UI/Custom/...` (PNG)
+- Plugin classes bind UI pages at runtime (code-side)
+
+Minimal approach:
+1. Create `.ui` layout files under `Common/UI/Custom/Pages/...` with standard layout containers.
+2. Reference shared UI components (e.g., a common stylesheet/ui include) via relative imports.
+3. Provide UI textures under `Common/UI/Custom/...` and reference them in the UI files.
+4. In code, load and show the UI page when an interaction or command is triggered.
+
+UI data files define layout, while the plugin provides the data and event handling.
 
 ## Command System (Observed Classes)
 
@@ -128,6 +444,31 @@ Worldgen entry points:
 - `FlatWorldGenProvider`, `VoidWorldGenProvider`
 - `WorldGenTimingsCollector`, `WorldGenBenchmarkCommand`
 
+## Dimensions (Multiple Worlds) - Inferred Guidance
+
+No explicit "dimension" API is visible in the JAR metadata. The closest observable concept is multiple worlds/instances managed by the universe/instances systems. Treat "dimensions" as multiple worlds with their own worldgen and settings.
+
+Observed clues:
+- `com.hypixel.hytale.server.core.universe` (Universe/World management)
+- `com.hypixel.hytale.builtin.instances.InstancesPlugin` (instance system)
+- `com.hypixel.hytale.server.core.universe.world.worldgen.*` (per-world generation)
+- `IWorldGenProvider` and related worldgen classes
+
+Suggested setup (unverified, based on class names):
+1. Define additional worlds/instances via server configuration (per-world entries).
+2. Assign a worldgen provider to each world (e.g., `FlatWorldGenProvider`, `VoidWorldGenProvider`, or a custom provider).
+3. Use teleport/instance APIs to move players between worlds.
+4. Ensure per-world data storage is isolated in the universe directory.
+
+Where to look (class/package anchors to inspect):
+- `com.hypixel.hytale.server.core.universe.Universe`
+- `com.hypixel.hytale.server.core.universe.world.*` (world objects and storage)
+- `com.hypixel.hytale.server.core.universe.world.worldgen.*` (worldgen provider interfaces)
+- `com.hypixel.hytale.builtin.instances.InstancesPlugin` (instance lifecycle)
+- `com.hypixel.hytale.builtin.teleport.TeleportPlugin` and `com.hypixel.hytale.builtin.adventure.teleporter.TeleporterPlugin`
+
+This section is inferred from naming and package layout, not from decompiled code. Validate on the target server build before relying on it.
+
 ## Built-in Plugin Families (From manifests.json)
 
 The server ships many built-in plugins. These names are good clues for extension points:
@@ -146,8 +487,12 @@ These packages exist in the JAR and suggest specific modding areas:
 - Access control: `server.core.modules.accesscontrol` (ban/whitelist commands)
 - Collision: `server.core.modules.collision` (hitboxes, block collisions)
 - Entity UI: `server.core.modules.entityui` (combat text, entity UI components)
+- Entity stats: `server.core.modules.entitystats` (stat tracking and modifiers)
+- Interaction system: `server.core.modules.interaction` (interaction chains, rules)
+- Items: `server.core.modules.item` (item definitions and item systems)
 - Permissions: `server.core.permissions` (groups, user permissions, op commands)
 - Prefab tools: `server.core.modules.prefabspawner` (prefab weights/spawn rules)
+- Projectiles: `server.core.modules.projectile` (projectile movement and impacts)
 - UI toolkit: `server.core.ui` and `server.core.ui.browser` (UI builders, file browser)
 
 ## Subsystem Index (Packages -> Plugin Ideas)
@@ -227,8 +572,58 @@ These examples are derived from class names above; confirm APIs before implement
 15. **UI-driven admin tools**  
     Leverage `UICommandBuilder` and `ServerFileBrowser` to create in-game dashboards.
 
+16. **Server player list sync**  
+    Use `server.core.modules.serverplayerlist` plus `UpdateServerPlayerList` packets for live staff visibility.
+
+17. **Localized UI strings**  
+    Build UI pages with `LocalizableString` to enforce i18n-ready admin panels.
+
+18. **Inventory action audit**  
+    Track `InventoryAction`/`MoveItemStack` flows to flag duping patterns or suspicious trades.
+
+19. **Custom HUD modules**  
+    Emit `CustomHud` / `HudComponent` updates for RPG stats or timed buffs.
+
+20. **World map markers**  
+    Use `MapMarker` and `UpdateWorldMap` for quests, POIs, or admin telemetry.
+
+21. **Time and weather controls**  
+    Expose `UpdateTime`, `UpdateWeather`, and `SetTimeDilation` toggles to admins.
+
+22. **Entity stat balancing**  
+    Wire `entitystats` module events with `UpdateEntityStatTypes` for live tuning.
+
+23. **Projectile sandbox**  
+    Build a range test using `server.core.modules.projectile` and `UpdateProjectileConfigs`.
+
+24. **Interaction chain visualizer**  
+    Use `SyncInteractionChain*` packets to trace and display interaction chains for QA.
+
+25. **Prefab preview and catalog**  
+    Render prefab lists with `Prefab*` packets and a UI page for selection/paste.
+
+26. **Asset pack rollout gates**  
+    Combine `AssetEditor*` and `Update*` assets to stage new packs for selected users.
+
+27. **Crash-safe save hooks**  
+    Use `server.core.universe` events plus `IndexedStorageFile` to checkpoint world data.
+
+28. **Camera director tools**  
+    Leverage `SetServerCamera` and `SetFlyCameraMode` for machinima or admin control.
+
+29. **Debug shape overlays**  
+    Use `DisplayDebug` / `ClearDebugShapes` to draw paths, spawn volumes, or nav hints.
+
+30. **Access control workflows**  
+    Extend `server.core.modules.accesscontrol` and `RequestServerAccess` for approval queues.
+
 ## Known Limits of This Dissection
 
 - No decompilation performed; signatures and behavior are inferred.
 - Some classes may be internal-only and not exposed to plugins.
 - Names can change between server builds; verify against your target JAR.
+
+## Changelog (Doc Updates)
+
+- Added mod load-order notes based on sample mods in `tmp/mods/`.
+- Added practical patterns for blocks, tools, and UI from sample mod layouts.

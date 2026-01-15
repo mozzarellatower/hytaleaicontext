@@ -23,7 +23,8 @@ This guide is based on inspecting `HytaleServer.jar` (build `2026.01.13-dcad8778
 
 ### Requirements
 
-- Java 21 or higher
+- Java 21 or higher (server manifest `Java-Version: 21`)
+- Hytalemodding.dev setup guide recommends JDK 25+ (Build-Jdk-Spec is 25 in this JAR)
 - `HytaleServer.jar` for compilation
 
 ### Project Setup
@@ -199,6 +200,15 @@ public final class MyPlugin extends JavaPlugin {
 ```
 
 The constructor receives a `JavaPluginInit` object that must be passed to the superclass.
+
+### Verified Lifecycle Hooks (javap)
+
+`PluginBase` exposes lifecycle hooks and helpers that match the runtime order:
+
+- `protected void setup()` / `protected void setup0()`
+- `protected void start()` / `protected void start0()`
+- `protected void shutdown()` / `protected void shutdown0(boolean)`
+- `public CompletableFuture<Void> preLoad()`
 
 ### JAR Layout
 
@@ -423,6 +433,25 @@ EventRegistration registration = getEventRegistry().register(
 registration.unregister();
 ```
 
+### Registering Global Events (Site Docs)
+
+The hytalemodding.dev event guide uses `registerGlobal(...)` in examples:
+
+```java
+getEventRegistry().registerGlobal(PlayerReadyEvent.class, ExampleEvent::onPlayerReady);
+```
+
+### ECS Event Systems (Site Docs)
+
+The hytalemodding.dev events guide notes that ECS events should be handled by an
+`EntityEventSystem` registered via `getEntityStoreRegistry()`.
+
+```java
+getEntityStoreRegistry().registerSystem(new ExampleCancelCraft());
+```
+
+`EntityEventSystem` exists in `com.hypixel.hytale.component.system`.
+
 ### Common Events Reference
 
 All events are in the `com.hypixel.hytale` package prefix.
@@ -480,7 +509,117 @@ All events are in the `com.hypixel.hytale` package prefix.
 |------------|-------------|
 | `LoadedAssetsEvent` | Assets finished loading |
 
+**Deprecations noted on hytalemodding.dev (see `https://hytalemodding.dev/en/docs/server/events`):**
+
+- `LivingEntityUseBlockEvent`
+- `PlayerCraftEvent`
+- `PlayerInteractEvent`
+- `PrepareUniverseEvent`
+
+### Extended Event List (Site Reference)
+
+From `https://hytalemodding.dev/en/docs/server/events`:
+
+```
+## IEvent
+- AddPlayerToWorldEvent
+- AllNPCsLoadedEvent
+- AllWorldsLoadedEvent
+- AssetMonitorEvent
+  - AssetStoreMonitorEvent
+  - CommonAssetMonitorEvent
+- AssetPackRegisterEvent
+- AssetPackUnregisterEvent
+- AssetStoreEvent
+  - RegisterAssetStoreEvent
+  - RemoveAssetStoreEvent
+- AssetsEvent
+  - GenerateAssetsEvent
+  - LoadedAssetsEvent
+  - RemovedAssetsEvent
+- BootEvent
+- ChunkEvent
+  - ChunkPreLoadProcessEvent
+- DrainPlayerFromWorldEvent
+- EditorClientEvent
+  - AssetEditorActivateButtonEvent
+  - AssetEditorAssetCreatedEvent
+  - AssetEditorClientDisconnectEvent
+  - AssetEditorSelectAssetEvent
+  - AssetEditorUpdateWeatherPreviewLockEvent
+- EntityEvent
+  - EntityRemoveEvent
+  - LivingEntityInventoryChangeEvent
+- GenerateDefaultLanguageEvent
+- GenerateSchemaEvent
+- GenerateServerStateEvent
+- ItemContainerChangeEvent
+- ~~LivingEntityUseBlockEvent~~ DEPRECATED
+- LoadAssetEvent
+- LoadedNPCEvent
+- MessagesUpdated
+- PlayerConnectEvent
+- PlayerEvent
+  - ~~PlayerCraftEvent~~ DEPRECATED
+  - ~~PlayerInteractEvent~~ DEPRECATED
+  - PlayerMouseButtonEvent
+  - PlayerMouseMotionEvent
+  - PlayerReadyEvent
+  - RemovePlayerFromWorldEvent
+- PlayerRefEvent
+  - PlayerDisconnectEvent
+- PlayerSetupConnectEvent
+- PlayerSetupDisconnectEvent
+- PluginEvent
+  - PluginSetupEvent
+- ~~PrepareUniverseEvent~~ DEPRECATED
+- ShutdownEvent
+- SingleplayerRequestAccessEvent
+- TreasureChestOpeningEvent
+- WindowCloseEvent
+- WorldEvent
+  - AddWorldEvent
+  - RemoveWorldEvent
+  - StartWorldEvent
+- WorldPathChangedEvent
+## IAsyncEvent
+- AssetEditorFetchAutoCompleteDataEvent
+- AssetEditorRequestDataSetEvent
+- PlayerChatEvent
+- SendCommonAssetsEvent
+## EcsEvent
+- CancellableEcsEvent
+  - BreakBlockEvent
+  - ChangeGameModeEvent
+  - ChunkSaveEvent
+  - ChunkUnloadEvent
+  - CraftRecipeEvent
+  - Damage
+  - DamageBlockEvent
+  - DropItemEvent
+  - InteractivelyPickupItemEvent
+  - PlaceBlockEvent
+  - PrefabPasteEvent
+  - SwitchActiveSlotEvent
+- DiscoverInstanceEvent
+  - Display
+- DiscoverZoneEvent
+  - Display
+- MoonPhaseChangeEvent
+- UseBlockEvent
+  - Post
+  - Pre
+```
+
 ---
+
+## Event Registry Notes (javap)
+
+`com.hypixel.hytale.event.EventRegistry` supports additional registration patterns beyond the basic examples:
+
+- `registerGlobal(...)` and `registerAsyncGlobal(...)` for global handlers
+- `registerUnhandled(...)` and `registerAsyncUnhandled(...)` for unhandled events
+- Keyed events via `register(Class, KeyType, Consumer)` and async equivalents
 
 ## Command System
 
@@ -504,9 +643,58 @@ public class HelloCommand extends AbstractCommand {
 }
 ```
 
+### Observed in Sample Mods (Heuristic)
+
+String scans of `.jar` mods in `tmp/mods/` show common use of:
+
+- `CommandRegistry` for registration
+- `CommandContext` and `CommandSender` during execution
+- `AbstractAsyncCommand` for off-thread command handling
+- `UICommandBuilder` for UI-bound command flows
+- `OptionalArg` for argument parsing
+
+This list is based on class/string presence and does not guarantee API stability.
+
+### UI-Triggered Command Flow (Inferred Example)
+
+Observed in a sample admin UI mod (non-verbatim pattern):
+
+1. Define a tool item in `Server/Item/Items/...` with an `Interactions` map that points to an interaction ID.
+2. Map that interaction ID to a root interaction in `Server/Item/RootInteractions/...`.
+3. Define the interaction JSON in `Server/Item/Interactions/Item/...` with a `Type` that matches a plugin handler class.
+4. Provide UI layouts under `Common/UI/Custom/Pages/...` (`.ui` files) plus textures under `Common/UI/Custom/...`.
+5. In plugin code, handle the interaction to open the UI and register any related commands through `CommandRegistry` or `UICommandBuilder`.
+
+This is a practical wiring pattern: data files expose the item and interaction, while the plugin handles UI and behavior.
+
+### Alternative Command Bases (Site Docs)
+
+hytalemodding.dev documents `AbstractPlayerCommand` under
+`com.hypixel.hytale.server.core.command.system.basecommands`. This extends
+`AbstractAsyncCommand`, meaning these commands run off the main server thread.
+
+The documented execute signature includes a player-bound context:
+
+```java
+protected void execute(CommandContext commandContext,
+                       Store<EntityStore> store,
+                       Ref<EntityStore> ref,
+                       PlayerRef playerRef,
+                       World world) {
+    // ...
+}
+```
+
 **AbstractCommand constructor signatures:**
 - `AbstractCommand(String name, String description)`
 - `AbstractCommand(String name, String description, boolean requiresConfirmation)`
+- `AbstractCommand(String name)`
+
+**AbstractCommand execute signature (javap):**
+
+```java
+protected abstract CompletableFuture<Void> execute(CommandContext context);
+```
 
 ### Registering Commands
 
@@ -527,6 +715,17 @@ registration.unregister();
 ```
 
 ---
+
+## Observed Runtime Classes (Server Logs)
+
+These class names appear in `serverexample/logs/*.log` stack traces and are useful anchors when searching the server JAR:
+
+- `com.hypixel.hytale.server.core.command.system.CommandManager`
+- `com.hypixel.hytale.server.core.command.system.AbstractCommand`
+- `com.hypixel.hytale.server.core.command.system.basecommands.CommandBase`
+- `com.hypixel.hytale.server.core.command.commands.server.auth.AuthPersistenceCommand`
+- `com.hypixel.hytale.server.core.auth.ServerAuthManager`
+- `com.hypixel.hytale.server.core.auth.EncryptedAuthCredentialStore`
 
 ## Configuration
 
@@ -560,6 +759,8 @@ public void setup() {
     Config<MyConfig> config = withConfig("custom-name", MyConfig.CODEC);
 }
 ```
+
+`PluginBase` also exposes `withConfig(BuilderCodec)` for default-named configs.
 
 ### Config Location
 
@@ -604,6 +805,12 @@ All registries are accessed via getter methods on your plugin:
 | `getTaskRegistry()` | `TaskRegistry` | Scheduled task registration |
 | `getAssetRegistry()` | `AssetRegistry` | Asset registration |
 | `getClientFeatureRegistry()` | `ClientFeatureRegistry` | Client feature flags |
+| `getEntityStoreRegistry()` | `ComponentRegistryProxy<EntityStore>` | Entity store components |
+| `getChunkStoreRegistry()` | `ComponentRegistryProxy<ChunkStore>` | Chunk store components |
+| `getCodecRegistry(StringCodecMapCodec)` | `CodecMapRegistry` | Codec registry (string-keyed) |
+| `getCodecRegistry(AssetCodecMapCodec)` | `CodecMapRegistry.Assets` | Codec registry for JSON assets |
+| `getCodecRegistry(MapKeyMapCodec)` | `MapKeyMapRegistry` | Codec registry for map-keyed codecs |
+| `getBasePermission()` | `String` | Base permission node for plugin |
 
 ### Logger Usage
 
@@ -623,6 +830,21 @@ CompletableFuture<Void> task = CompletableFuture.runAsync(() -> {
 });
 getTaskRegistry().registerTask(task);
 ```
+
+---
+
+## Site Notes: Server Code Insights (Summary)
+
+Source: https://hytalemodding.dev/en/docs/established-information/server-plugin-insights
+
+- Server source is expected to ship as shared source with no obfuscation.
+- License is described as allowing Hytale-related usage (no reuse for unrelated games).
+- Built-in permission system exists and supports alternative backends (e.g., database).
+- Worldgen can be fully replaced by implementing `IWorldGenProvider` / `IWorldGen`.
+- Chunk storage provider can be customized (e.g., empty provider or database-backed).
+
+These notes are from a public Discord discussion and should be treated as
+informational context until confirmed by official release notes.
 
 ---
 
@@ -754,8 +976,7 @@ if (plugin instanceof WebServerPlugin webServer) {
 }
 ```
 
-See https://github.com/nitrado/hytale-plugin-webserver and
-https://github.com/nitrado/hytale-plugin-query for real-world usage.
+See public example plugins for real-world usage patterns.
 
 ## Complete Examples
 
@@ -930,5 +1151,12 @@ For more detailed API information, consider:
 2. Examining built-in plugin implementations in the JAR
 3. Testing behavior on a running server
 4. Reviewing public plugins for real-world patterns (e.g., `Nitrado:WebServer`, `Nitrado:Query`)
+5. Reading the hytalemodding.dev plugin guides:
+   - https://hytalemodding.dev/en/docs/guides/plugin/creating-commands
+   - https://hytalemodding.dev/en/docs/guides/plugin/creating-events
+   - https://hytalemodding.dev/en/docs/guides/plugin/permission-management
+   - https://hytalemodding.dev/en/docs/guides/plugin/inventory-management
+   - https://hytalemodding.dev/en/docs/guides/plugin/spawning-entities
+   - https://hytalemodding.dev/en/docs/guides/plugin/player-input-guide
 
 This documentation will be updated as more API details are discovered or official documentation is released.

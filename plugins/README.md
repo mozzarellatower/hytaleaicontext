@@ -48,10 +48,4 @@ This folder contains documentation for developing Hytale server plugins.
 ## See Also
 
 - [../HytaleServer.md](../HytaleServer.md) - Server documentation and CLI options
-
-## Public Example Plugins
-
-- https://github.com/nitrado/hytale-plugin-webserver
-- https://github.com/nitrado/hytale-plugin-query
-- https://github.com/apexhosting/hytale-plugin-prometheus
-- https://github.com/nitrado/hytale-plugin-performance-saver
+- [../tmp/mods-scan-assets.md](../tmp/mods-scan-assets.md) - Content pack layout from sample mods

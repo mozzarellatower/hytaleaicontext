@@ -1,6 +1,6 @@
 # Custom plugins (modding overview)
 
-This is a practical, engine-agnostic guide for writing your own Hytale server plugins. It avoids hardcoding API details because the official SDK and APIs can change by build. Use this as a checklist and adapt it to the SDK docs that match your server jar.
+This is a practical, engine-agnostic guide for writing your own Hytale server plugins (code mods). It avoids hardcoding API details because the official SDK and APIs can change by build. Use this as a checklist and adapt it to the SDK docs that match your server jar.
 
 ## 1) Get the right SDK
 
@@ -10,7 +10,7 @@ This is a practical, engine-agnostic guide for writing your own Hytale server pl
 
 ## 2) Typical plugin structure
 
-Most Hytale-style mods/plugins follow a similar layout:
+Most Hytale-style plugins (code mods) follow a similar layout:
 
 - A `manifest.json` (or equivalent) describing the mod: name, version, entry point.
 - A compiled artifact (often a `.jar`) placed in `serverexample/mods`.

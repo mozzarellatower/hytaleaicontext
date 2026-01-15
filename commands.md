@@ -42,9 +42,23 @@ This appears in the server log message: "Use /auth login to authenticate".
 
 Permissions are stored in `serverexample/permissions.json`. In this sample, the `OP` group has `"*"` (all permissions). If you add players or groups there, restart the server to apply changes.
 
+From sample mods in `tmp/mods/`, permissions APIs appear to include `PermissionsModule` and helpers like `setPermissionGroup(s)` (names observed in class strings). Use these as search anchors when exploring the server JAR or decompiled sources.
+
 ## Mods and custom commands
 
 Mods can register their own commands. Look for mod folders under `serverexample/mods` and any mod-specific config or docs. If a mod has no manifest or docs, you can still inspect the server log on startup to see whether it loaded and what commands it adds.
+
+### Patterns seen in sample mods (heuristic)
+
+From string scans of sample `.jar` mods in `tmp/mods/`:
+
+- Commands are registered through `CommandRegistry` and implemented with `AbstractCommand` or `AbstractAsyncCommand`.
+- Command execution uses `CommandContext` and `CommandSender`.
+- Some mods build UI-driven commands via `UICommandBuilder`.
+- Argument helpers like `OptionalArg` appear in command classes.
+- Several mods use `CommandBuffer` (likely for batched or scripted command execution).
+
+These are class-level observations, not confirmed command names. Use `/commands` or logs to discover actual labels.
 
 ## Core commands (inferred from the server jar)
 

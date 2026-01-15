@@ -2,7 +2,52 @@
 
 Community-driven documentation for Hytale dedicated servers, reverse-engineered from `HytaleServer.jar`.
 
-> **Disclaimer:** This is unofficial documentation based on reverse engineering. It is not affiliated with or endorsed by Hypixel Studios. API details may change between server versions.
+> Disclaimer: This is unofficial documentation based on reverse engineering. It is not affiliated with or endorsed by Hypixel Studios. API details may change between server versions.
+
+---
+
+## Source Boundaries
+
+This repo separates sources:
+
+- JAR-derived facts: extracted from `serverexample/Server/HytaleServer.jar` or server logs.
+- Sample mods: observations from files in `tmp/mods/`.
+- External claims: sourced from public docs or community sources and explicitly labeled.
+
+---
+
+## Agent Pointers (Read First)
+
+If you are an agent, start with:
+
+- `INSTRUCTIONS.MD` (workflow rules and scope)
+- `AGENTS.md` (task splits, if applicable)
+- `HytaleServer-Dissection.md` (JAR map and inferred guidance)
+
+---
+
+## Who This Is For
+
+- Server admins who need CLI/config references.
+- Plugin developers who need lifecycle, events, and registries.
+- AI agents that need a clear map of the JAR and docs.
+
+---
+
+## Where To Start
+
+- Server CLI/config and built-in plugins: `HytaleServer.md`
+- JAR map and built-in plugin manifests: `HytaleServer-Dissection.md`
+- Plugin API reference: `plugins/HytaleServer-Plugin-API.md`
+- Plugin examples: `plugins/HytaleServer-Plugin-Examples.md`
+- Structures guide (prefabs): `plugins/Structures-Guide.md`
+
+Additional docs:
+- Commands overview: `commands.md`
+- Command examples: `commandexamples.md`
+- Command mod notes: `commandmod.md`
+- Permissions notes: `permissions_java.md`
+- Sample mods scan (content packs): `tmp/mods-scan-assets.md`
 
 ---
 
@@ -10,15 +55,17 @@ Community-driven documentation for Hytale dedicated servers, reverse-engineered 
 
 ### Running a Server
 
+The server JAR in this repo is located at `serverexample/Server/HytaleServer.jar`.
+
 ```bash
 # Basic server start
-java -jar HytaleServer.jar
+java -jar serverexample/Server/HytaleServer.jar
 
 # With custom mods directory
-java -jar HytaleServer.jar --mods ./mods
+java -jar serverexample/Server/HytaleServer.jar --mods ./mods
 
 # Specify bind address/port (build 2026.01.13)
-java -jar HytaleServer.jar --bind 0.0.0.0:25565
+java -jar serverexample/Server/HytaleServer.jar --bind 0.0.0.0:25565
 ```
 
 ### Creating Your First Plugin
@@ -66,26 +113,7 @@ public final class MyPlugin extends JavaPlugin {
 
 ---
 
-## Documentation
-
-### Server Documentation
-
-| Document | Description |
-|----------|-------------|
-| [HytaleServer.md](./HytaleServer.md) | Server CLI options, configuration, and built-in plugins |
-| [HytaleServer-Dissection.md](./HytaleServer-Dissection.md) | JAR package map and inferred mod/plugin use cases |
-
-### Plugin Development
-
-| Document | Description |
-|----------|-------------|
-| [Plugin API Reference](./plugins/HytaleServer-Plugin-API.md) | Complete API documentation for plugin development |
-| [Plugin Examples](./plugins/HytaleServer-Plugin-Examples.md) | 21 ready-to-use plugin examples |
-| [Structures Guide](./plugins/Structures-Guide.md) | Saving and loading structures (prefabs) |
-
----
-
-## Server Features
+## Server Features (High Level)
 
 ### CLI Options (Observed in 2026.01.13)
 
@@ -99,18 +127,18 @@ public final class MyPlugin extends JavaPlugin {
 | `--accept-early-plugins` | Allow early plugins (unstable) |
 | `--early-plugins <path>` | Additional early plugin directories |
 
-See [HytaleServer.md](./HytaleServer.md) for the complete list.
+See `HytaleServer.md` for the complete list.
 
 ### Built-in Plugins (46 + 2 sub-plugins)
 
 The server includes extensive built-in functionality (plus NPC sub-plugins `Spawning` and `Flock`):
 
-- **Core Systems:** Entity, Block, Item, Interaction, Damage, I18n modules
-- **Gameplay:** Crafting, NPCs, Mounts, Weather, Farming, Combat
-- **Building:** Builder Tools, Prefab system, World Generation
-- **Multiplayer:** LAN Discovery, Instances, Teleportation
+- Core systems: Entity, Block, Item, Interaction, Damage, I18n modules
+- Gameplay: Crafting, NPCs, Mounts, Weather, Farming, Combat
+- Building: Builder Tools, Prefab system, World Generation
+- Multiplayer: LAN Discovery, Instances, Teleportation
 
-See [HytaleServer.md](./HytaleServer.md) for the complete list.
+See `HytaleServer.md` for the complete list.
 
 ---
 
@@ -119,7 +147,7 @@ See [HytaleServer.md](./HytaleServer.md) for the complete list.
 ### Plugin Lifecycle
 
 ```
-NONE → SETUP → START → ENABLED → SHUTDOWN
+NONE -> SETUP -> START -> ENABLED -> SHUTDOWN
 ```
 
 | Method | Purpose |
@@ -150,7 +178,7 @@ getEventRegistry().register(PlayerConnectEvent.class, event -> {
 });
 ```
 
-**Common Events:**
+Common events:
 - `PlayerConnectEvent`, `PlayerDisconnectEvent`, `PlayerChatEvent`
 - `BreakBlockEvent`, `PlaceBlockEvent`, `UseBlockEvent`
 - `BootEvent`, `ShutdownEvent`
@@ -169,46 +197,71 @@ class MyCommand extends AbstractCommand {
 
 ---
 
+## Modding Patterns (From Sample Mods)
+
+These are high-level, non-verbatim patterns observed from sample mods in `tmp/mods/`:
+
+- Blocks: JSON item definitions under `Server/Item/Items/...` with `BlockType`, plus optional hitboxes, groups, and recipes.
+- Tools/usable items: item JSON with `Interactions` + separate interaction JSONs and root interaction mapping.
+- UI: `.ui` files under `Common/UI/Custom/Pages/...` with textures in `Common/UI/Custom/...`, bound by plugin code at runtime.
+- Packaging: `.jar` mods act as code plugins; `.zip` mods act as data/content packs (observed).
+
+See `HytaleServer-Dissection.md` for expanded guidance.
+
+Additional references:
+- `plugins/Structures-Guide.md` (content pack flow + layout patterns)
+- `HytaleServer-Dissection.md` (mod load-order notes)
+
+---
+
 ## Example Plugins Included
 
-The [examples documentation](./plugins/HytaleServer-Plugin-Examples.md) includes complete, working code for:
+The examples doc includes complete, working code for:
 
 | Category | Examples |
 |----------|----------|
-| **Essentials** | Commands, Events, Config, Scheduled Tasks |
-| **Player Systems** | Play Time, Stats, AFK Detection, Daily Rewards |
-| **Chat** | Filter, Prefixes, Private Messaging |
-| **Economy** | Balance, Payments, Shop integration |
-| **Teleportation** | Warps, Homes, Spawn system |
-| **Admin** | Player Management, Reports, Announcements |
-| **Gameplay** | Kits, Cooldowns, Combat Logging, Polls |
+| Essentials | Commands, Events, Config, Scheduled Tasks |
+| Player Systems | Play Time, Stats, AFK Detection, Daily Rewards |
+| Chat | Filter, Prefixes, Private Messaging |
+| Economy | Balance, Payments, Shop integration |
+| Teleportation | Warps, Homes, Spawn system |
+| Admin | Player Management, Reports, Announcements |
+| Gameplay | Kits, Cooldowns, Combat Logging, Polls |
 
 ---
 
 ## Project Structure
 
 ```
-hytaledocs/
-├── README.md                    # This file
-├── HytaleServer.jar             # Server JAR (for reference)
-├── HytaleServer.md              # Server documentation
-└── plugins/
-    ├── README.md                # Plugin docs index
-    ├── HytaleServer-Plugin-API.md      # API reference
-    ├── HytaleServer-Plugin-Examples.md # 21 examples
-    └── Structures-Guide.md      # Prefab/structure guide
+.
+├── README.md
+├── HytaleServer.md
+├── HytaleServer-Dissection.md
+├── commands.md
+├── commandexamples.md
+├── commandmod.md
+├── permissions_java.md
+├── plugins/
+│   ├── README.md
+│   ├── HytaleServer-Plugin-API.md
+│   ├── HytaleServer-Plugin-Examples.md
+│   └── Structures-Guide.md
+├── serverexample/
+│   └── Server/
+│       └── HytaleServer.jar
+└── tmp/  # scratch, ignored
 ```
 
 ---
 
 ## Requirements
 
-- **Java:** 21 or higher
-- **OS:** Windows, macOS, or Linux
+- Java: 21 or higher
+- OS: Windows, macOS, or Linux
 
 ### Plugin Development
 
-**Maven:**
+Maven:
 ```xml
 <dependency>
     <groupId>com.hypixel.hytale</groupId>
@@ -219,7 +272,7 @@ hytaledocs/
 </dependency>
 ```
 
-**Gradle:**
+Gradle:
 ```groovy
 compileOnly files('lib/HytaleServer.jar')
 ```
@@ -244,10 +297,10 @@ compileOnly files('lib/HytaleServer.jar')
 
 This documentation is community-maintained. Contributions welcome:
 
-1. **Report inaccuracies** - API changes between versions
-2. **Add examples** - New plugin patterns and use cases
-3. **Improve clarity** - Better explanations and code samples
-4. **Document new features** - As the game updates
+1. Report inaccuracies (API changes between versions)
+2. Add examples (new plugin patterns and use cases)
+3. Improve clarity (better explanations and code samples)
+4. Document new features (as the game updates)
 
 ---
 
@@ -259,14 +312,13 @@ This documentation was created by analyzing:
 - Embedded `manifests.json` for plugin structure
 - Package organization and naming conventions
 - Built-in plugin implementations as reference
-- Public example plugins from the community (see below)
 
-**Tools used:**
-- `unzip` - JAR inspection
-- `strings` - Binary string extraction
+Tools used:
+- `unzip` (JAR inspection)
+- `strings` (binary string extraction)
 - Class structure analysis
 
-**Not used (unavailable):**
+Not used (unavailable):
 - Full decompilation (Fernflower/CFR not available)
 - Runtime debugging
 
@@ -285,19 +337,9 @@ This documentation was created by analyzing:
 
 ## Resources
 
-### Official
-- [Hytale Website](https://hytale.com)
-- [Hypixel Studios](https://hypixelstudios.com)
-
-### Community
-- Report documentation issues via pull requests
-- Share your plugins with the community
-
-### Example Plugins (Public Repos)
-- https://github.com/nitrado/hytale-plugin-webserver (HTTP server plugin, shared servlet layer)
-- https://github.com/nitrado/hytale-plugin-query (server info API, content negotiation)
-- https://github.com/apexhosting/hytale-plugin-prometheus (Prometheus metrics exporter)
-- https://github.com/nitrado/hytale-plugin-performance-saver (TPS + view radius throttling)
+Official:
+- https://hytale.com
+- https://hypixelstudios.com
 
 ---
 
@@ -307,4 +349,4 @@ This documentation is provided for educational purposes. Hytale and related trad
 
 ---
 
-*Last updated: January 2026*
+Last updated: January 2026

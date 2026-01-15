@@ -9,6 +9,15 @@ This document is derived from inspecting `HytaleServer.jar` contents (manifest m
 - Implementation version: `2026.01.13-dcad8778f` (branch `release`, patchline `release`)
 - Artifact: `com.hypixel.hytale:Server`
 
+## External notes (hytalemodding.dev)
+
+These points come from hytalemodding.dev and are not derived from the JAR itself:
+
+- Java runtime: documentation there states server compatibility and modding tooling require Java 25+.
+- Server tick rate: a developer Q&A summary claims default 30 TPS and that plugins can change it.
+
+Treat these as external claims and verify against the target server build.
+
 ## High-level structure
 
 The JAR is a shaded (fat) server distribution that embeds:
@@ -51,6 +60,37 @@ From string constants in `HytaleServerConfig`:
 
 These names indicate the server will generate or read a JSON config file in the working directory and merge module/mod settings from it.
 
+### Sample config.json (serverexample)
+
+Observed keys and defaults from `serverexample/config.json`:
+
+| Key | Example value |
+|---|---|
+| `Version` | `3` |
+| `ServerName` | `Hytale Server` |
+| `MOTD` | empty string |
+| `Password` | empty string |
+| `MaxPlayers` | `100` |
+| `MaxViewRadius` | `32` |
+| `LocalCompressionEnabled` | `false` |
+| `Defaults.World` | `default` |
+| `Defaults.GameMode` | `Adventure` |
+| `ConnectionTimeouts.JoinTimeouts` | `{}` |
+| `RateLimit` | `{}` |
+| `Modules.PathPlugin.Modules` | `{}` |
+| `LogLevels` | `{}` |
+| `Mods` | `{}` |
+| `DisplayTmpTagsInStrings` | `false` |
+| `PlayerStorage.Type` | `Hytale` |
+| `AuthCredentialStore.Type` | `Encrypted` |
+| `AuthCredentialStore.Path` | `auth.enc` |
+
+### Runtime hints from logs (serverexample)
+
+- Server auth tokens can be supplied by CLI or environment variables, per `ServerAuthManager` log message.
+- Plugin and asset packs are loaded from the `mods` directory by default.
+- The asset path watcher logs that a restart is required to reload assets (matches `--disable-file-watcher` flag behavior).
+
 ## CLI options (observed)
 
 The following flags are present as string constants in `com.hypixel.hytale.server.core.Options`. Some include help text embedded in the binary; those are listed with descriptions. Others are listed without an embedded description and should be treated as provisional.
@@ -59,12 +99,15 @@ The following flags are present as string constants in `com.hypixel.hytale.serve
 
 | Flag | Description (from embedded strings) |
 |---|---|
+| `--help` | Prints this message. |
+| `--version` | Prints version information. |
 | `--bare` | Runs the server bare (no world loading, no port binding, no directory creation; plugins may still load). |
-| `--bind` | Port/address to listen on. |
-| `--transport` | Transport type (see `com.hypixel.hytale.server.core.io.transport.TransportType`). |
+| `--log` | Sets the logger level (comma-separated values). |
+| `-b`, `--bind` | Port to listen on (default `5520`). |
+| `-t`, `--transport` | Transport type (see `com.hypixel.hytale.server.core.io.transport.TransportType`). |
 | `--prefab-cache` | Prefab cache directory for immutable assets. |
 | `--disable-cpb-build` | Disables building of compact prefab buffers. |
-| `--assets` | Asset directory (accepts dir or zip). Default appears to be `../HytaleAssets`. |
+| `--assets` | Asset directory (accepts dir or zip). Default: `../HytaleAssets`. |
 | `--mods` | Additional mods directories. |
 | `--accept-early-plugins` | Acknowledge that early plugins are unsupported and may be unstable. |
 | `--early-plugins` | Additional early plugin directories to load from. |
@@ -74,16 +117,21 @@ The following flags are present as string constants in `com.hypixel.hytale.serve
 | `--shutdown-after-validate` | Automatically shutdown after validation. |
 | `--generate-schema` | Generate schema, save into assets directory, then exit. |
 | `--world-gen` | World generation directory. |
+| `--migrations` | Migrations to run. |
+| `--migrate-worlds` | Worlds to migrate. |
+| `--boot-command` | Runs command on boot (multiple commands run synchronously in order). |
+| `--auth-mode` | Authentication mode. |
+| `--session-token` | Session token for Session Service API. |
+| `--identity-token` | Identity token (JWT). |
 | `--disable-asset-compare` | Disable asset comparison (exact behavior unspecified). |
 | `--backup` | Enable backups (details via related flags). |
 | `--backup-frequency` | Backup frequency in minutes. |
 | `--backup-dir` | Backup directory. |
 | `--backup-max-count` | Max number of backups to keep. |
-| `--migrate-worlds` | Worlds to migrate. |
 
 ### Other observed flags (no embedded descriptions)
 
-`--allow-op`, `--auth-mode`, `--boot-command`, `--client-pid`, `--disable-file-watcher`, `--disable-sentry`, `--event-debug`, `--force-network-flush`, `--identity-token`, `--log`, `--migrations`, `--owner-name`, `--owner-uuid`, `--patchline`, `--session-token`, `--singleplayer`, `--universe`, `--environment`, `--release`, `--version`, `--help`
+`--allow-op`, `--client-pid`, `--disable-file-watcher`, `--disable-sentry`, `--event-debug`, `--force-network-flush`, `--owner-name`, `--owner-uuid`, `--singleplayer`, `--universe`, `--patchline`, `--environment`, `--release`
 
 ## Built-in plugins
 
@@ -150,6 +198,53 @@ The `migration/blocks/` folder contains JSON maps for block ID or block-state mi
 These appear to map older block names or rotated variants to updated identifiers, used by world migration routines.
 
 ---
+
+## Asset Pack Layout (Sample Mods)
+
+Observed in content packs (`.zip`) under `tmp/mods/`:
+
+```
+manifest.json
+Common/
+  Blocks/
+  BlockTextures/
+  Icons/
+  Items/
+  Resources/
+  UI/
+Server/
+  Item/
+    Block/Hitboxes/
+    CustomConnectedBlockTemplates/
+    Groups/
+    Items/
+    Recipes/
+  Languages/en-US/
+```
+
+Not every pack includes every folder, but most use `Common/*` for art assets
+and `Server/Item/*` for data assets and recipes.
+
+Common item JSON keys seen in packs:
+
+- `TranslationProperties`, `Icon`, `IconProperties`
+- `Categories`, `Tags`, `Set`, `ResourceTypes`
+- `Recipe`
+- `BlockType` for placeable blocks
+
+Common `BlockType` keys seen in packs:
+
+- `Material`, `DrawType`, `Opacity`
+- `CustomModel`, `CustomModelTexture`
+- `HitboxType`, `VariantRotation`
+- `BlockParticleSetId`, `BlockSoundSetId`
+- `Gathering`, `Flags`, `Support`
+
+Recipe keys vary by pack:
+
+- `Input`, `BenchRequirement`
+- `PrimaryOutput` or `OutputQuantity`
+- `TimeSeconds` or `Seconds`
 
 ## See Also
 
