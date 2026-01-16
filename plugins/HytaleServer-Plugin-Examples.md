@@ -18,6 +18,8 @@ Practical examples for creating plugins that add functionality to Hytale servers
 10. [Teleportation System](#teleportation-system)
 11. [JAR-Inspired Skeletons](#jar-inspired-skeletons)
 12. [External Example Project Index](#external-example-project-index)
+13. [Decompiled Mod Patterns (Set A)](#decompiled-mod-patterns-set-a)
+14. [Decompiled Mod Patterns (Set B)](#decompiled-mod-patterns-set-b)
 
 ---
 
@@ -80,6 +82,105 @@ Player/entity mismatches:
 
 - Examples 07, 08, 09 import `com.hypixel.hytale.server.world.*` Store/EntityStore/Ref packages that do not exist; use `com.hypixel.hytale.component.Store`/`Ref` and `com.hypixel.hytale.server.core.universe.world.storage.EntityStore`.
 - Examples 13 and 14 use `com.hypixel.hytale.plugin.JavaPlugin` and `getEventBus()`/`getEntityStoreComponentRegistry()`/`getCommandRegistry().register(String, ...)`, which are not in the JAR. Use `com.hypixel.hytale.server.core.plugin.JavaPlugin` and registries from `PluginBase` (`getEventRegistry()`, `getCommandRegistry().registerCommand(...)`, `getEntityStoreRegistry()`).
+
+### Decompiled Mod Patterns (Set A)
+
+These are concrete patterns pulled from decompiled mods in this repo.
+Use them as JAR-aligned, real-world examples.
+
+- AdminUI (`AdminUI-1.0.1`)
+  - Command: `admin` with shortcut commands (entries via `AdminUIIndexRegistry`),
+    `setPermissionGroups("OP")` and `setPermissionGroup(GameMode.Creative)`.
+  - UI flow: custom pages via `player.getPageManager().openCustomPage(...)`.
+  - Events: `registerGlobal(PlayerConnectEvent)` for player tracking and
+    `registerGlobal(PlayerChatEvent)` to cancel muted chat.
+  - Assets: `register(LoadedAssetsEvent.class, ModelAsset.class, ...)` for model lists.
+  - Permissions: `PermissionsModule.get().getGroupsForUser(uuid)` and `"OP"` checks.
+- AdvancedItemInfo (`AdvancedItemInfo-1.0.4`)
+  - Command: `advancedinfo` with aliases `aii`, `iteminfo` and optional arg `s`.
+  - Assets: `LoadedAssetsEvent<Item>`, `LoadedAssetsEvent<CraftingRecipe>`,
+    `RemovedAssetsEvent<CraftingRecipe>` to maintain item/recipe lists.
+  - UI flow: custom page with a default search string.
+- BetterModlist (`BetterModlist-1.0.4`)
+  - Command: `modlist` with Adventure permission group.
+  - UI flow: custom page listing plugin manifests and asset-pack flag.
+- LuckyMining (`LuckyMining-1.0.3`)
+  - ECS event system: extends `EntityEventSystem` on `BreakBlockEvent`.
+  - Effects: `ParticleUtil.spawnParticleEffect` + `SoundUtil.playSoundEvent2dToPlayer`.
+  - Query: system query uses `PlayerRef.getComponentType()`.
+- Spellbook (`Spellbook-2026.1.13-22466`)
+  - Interactions: registers `DarkhaxSpellbookWarpHome` (`SimpleInstantInteraction`)
+    and `DarkhaxSpellbookBlockPush` (`SimpleBlockInteraction`).
+  - Block states: `BlockStateRegistry.registerBlockState(...)` for
+    `ItemGeneratorState` and `ConveyorState`.
+  - Helpers: `DropListOutput` uses droplist validation and roll counts.
+
+### Decompiled Mod Patterns (Set B)
+
+These are concrete patterns pulled from decompiled mods in this repo.
+Use them as JAR-aligned, real-world examples.
+
+- ThePickaxesPlaceTorches (`ThePickaxesPlaceTorches-1.0.0`)
+  - Interaction: registers custom `Interaction` codec and uses `SimpleBlockInteraction`.
+  - Placement: uses `BlockPlaceUtils.placeBlock` with `InteractionContext` + `BlockRotation`.
+- Hybrid (`hybrid-2026.01.13-1.4`)
+  - Command: `hybrid` command extends `CommandBase` and sets `GameMode.Creative`.
+  - Events: registers `PlayerReadyEvent` and `LoadedAssetsEvent<Item/BlockType>`,
+    plus `EntityEventSystem` handlers for `BreakBlockEvent`, `PlaceBlockEvent`,
+    and `UseBlockEvent.Pre` (`HybridBreakBlockEventSystem`, `HybridPlaceBlockEventSystem`,
+    `HybridUseBlockEventSystem`).
+  - Callback bus: `EventFactory.createArrayBacked(...)` provides lightweight
+    callback registries (`EntityBreakBlockCallback`, `PlayerBlockCallbacks`).
+- InfiniteMana (`infinitemana-2026.01.06-1.0`)
+  - Config: `withConfig(...)` + `ConfigFunctions.buildCodec(...)` to load a
+    boolean flag (`givePlayersInfiniteMana`).
+  - Tick hook: `PlayerTickCallback.ON_PLAYER_TICK.register(...)` modifies the
+    player's `EntityStatMap` for `HybridEntityStatType.MANA`.
+- TreeHarvester (`treeharvester-2026.01.12-1.1`)
+  - Break callback: `EntityBreakBlockCallback.ENTITY_BREAK_BLOCK` checks logs,
+    collects connected blocks, and drops logs/leaves (`BlockFunctions.dropBlock`).
+  - QoL: optional sapling replant + durability decrease + fill root holes
+    (`Util.fillTreeRootsHole`, `PlayerFunctions.decreaseHeldItemDurability`).
+- Ymmersive Melodies (`ymmersive-melodies-1.0.1`)
+  - Interactions: registers `Ymmersive_Melodies_Melody_Playback` (extends
+    `SimpleInteraction`, plays sound events in `tick0`) and
+    `OpenCustomUIInteraction` page `Ymmersive_Melodies_Selection`.
+  - UI: `OpenCustomUIInteraction.CustomPageSupplier` + `UICommandBuilder` /
+    `UIEventBuilder` to drive custom pages and event bindings.
+  - Data: `registerResource(...)` for `YmmersiveMelodiesRegistry` plus asset store
+    registration for `MelodyAsset`.
+### Use-Case Ideas (Verified Systems)
+
+Each idea references concrete systems and class names seen in decompiled mods.
+
+- EntityEventSystem hooks (`HybridBreakBlockEventSystem`, `HybridPlaceBlockEventSystem`)
+  - Region-based block rules (deny or alter break/place in protected zones).
+  - Harvest logic that drops alternate items or plays custom effects.
+  - Right-click block interactions via `UseBlockEvent.Pre` for machines or puzzles.
+- Player tick callbacks (`PlayerTickCallback.ON_PLAYER_TICK`)
+  - Passive stat regeneration (mana/energy) gated by config flags.
+  - Timed buffs or debuffs that update each tick and auto-expire.
+  - Lightweight AFK timers or stamina drain while sprinting.
+- Interaction codecs (`MelodyPlaybackInteraction`, `WarpHomeInteraction`, `BlockPushInteraction`)
+  - Item abilities that play sounds, spawn particles, or toggle state.
+  - Teleport charms to a saved respawn point or world spawn.
+  - Physics triggers (push pads, knockback blocks, launch items).
+- Custom admin dashboards (`AdminCommand`, `UICommandBuilder`, `UIEventBuilder`)
+  - In-game staff panels for bans, mutes, warps, and backups.
+  - Player detail cards with gamemode/model dropdowns and action buttons.
+- Asset-driven browsers (`OpenAdvancedInfoCommand`, `LoadedAssetsEvent<Item>`)
+  - Searchable item encyclopedia with icons, recipes, and tooltips.
+  - Live recipe registry that updates as assets load/unload.
+- Modlist viewers (`ModlistCommand`, `PluginManifest`)
+  - In-game mod listing with version/author/website and asset-pack badge.
+- Custom UI pages (`OpenCustomUIInteraction.CustomPageSupplier`, `UICommandBuilder`)
+  - Item-specific settings panels (music selection, cosmetic toggles).
+  - Simple admin dashboards (list players, toggle flags, view stats).
+  - Mini-game selection or matchmaking screens.
+- Tickable block states (`ItemGeneratorState`, `ConveyorState`)
+  - Conveyor belts or moving platforms that push entities/items.
+  - Timed item generators or resource nodes with cooldowns.
+  - Area effect blocks that pulse buffs or hazards on a timer.
 
 ### JAR-Aligned Snippet Replacements (Non-Verbatim)
 

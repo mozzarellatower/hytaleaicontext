@@ -65,6 +65,42 @@ See `HytaleServer-Dissection.md` for package-level references to prefab tooling:
 - `com.hypixel.hytale.server.core.modules.prefabspawner`
 - `com.hypixel.hytale.builtin.buildertools.prefabeditor.ui`
 
+## JAR-Backed Prefab APIs
+
+The server JAR exposes concrete prefab APIs you can target from plugins:
+
+- `com.hypixel.hytale.server.core.prefab.PrefabStore`
+  - Separate namespaces for server, worldgen, and asset-pack prefabs.
+  - Read/write via `getServerPrefab`, `getWorldGenPrefab`, `getAssetPrefab` and
+    `saveServerPrefab`, `saveWorldGenPrefab`, `saveAssetPrefab`.
+  - Asset-pack helpers include `getAssetPrefabsPathForPack` and
+    `findAssetPackForPrefabPath`.
+- `com.hypixel.hytale.server.core.prefab.selection.standard.BlockSelection`
+  - Core structure buffer with block/fluid/entity counts and placement helpers.
+  - Supports `place(...)`, `rotate(...)`, `flip(...)`, `relativize(...)`, and
+    comparison helpers like `matches(...)`.
+  - Masked placement uses `com.hypixel.hytale.server.core.prefab.selection.mask.BlockMask`.
+- `com.hypixel.hytale.server.core.prefab.selection.mask.BlockMask`
+  - Parses masks from strings (`parse(...)`) and supports invert/exclude logic.
+- `com.hypixel.hytale.server.core.prefab.event.PrefabPasteEvent`
+  - Cancellable ECS event with `getPrefabId()` and `isPasteStart()`.
+- `com.hypixel.hytale.server.core.prefab.event.PrefabPlaceEntityEvent`
+  - ECS event for entity placement with `getPrefabId()` and `getHolder()`.
+
+## Worldgen + Prefab Integration
+
+Classes that show prefabs are used during world generation:
+
+- `com.hypixel.hytale.server.worldgen.chunk.populator.PrefabPopulator`
+- `com.hypixel.hytale.server.worldgen.cave.CavePrefabPlacement`
+- `com.hypixel.hytale.server.worldgen.container.PrefabContainer`
+- `com.hypixel.hytale.server.worldgen.container.UniquePrefabContainer`
+
+Worldgen providers are defined under
+`com.hypixel.hytale.server.core.universe.world.worldgen.provider` with
+`FlatWorldGenProvider`, `VoidWorldGenProvider`, and `DummyWorldGenProvider`
+implementing `IWorldGenProvider`.
+
 ## Asset Pack Layout (Sample Mods)
 
 Examples from local content packs (`.zip`) (not included in this repo) show a common layout:

@@ -397,6 +397,48 @@ Asset events:
 
 - `assetstore.event.LoadedAssetsEvent`
 
+### Confirmed by Decompiled Server Sources
+
+The extracted server sources confirm these event classes and ECS types:
+
+- Core lifecycle: `BootEvent`, `PrepareUniverseEvent`, `ShutdownEvent`
+- Player events: `PlayerConnectEvent`, `PlayerDisconnectEvent`, `PlayerReadyEvent`, `PlayerChatEvent`, `PlayerRefEvent`
+- ECS events: `BreakBlockEvent`, `PlaceBlockEvent`, `UseBlockEvent`, `CraftRecipeEvent`, `DropItemEvent`, `InteractivelyPickupItemEvent`, `SwitchActiveSlotEvent`
+- Entity events: `EntityRemoveEvent`, `LivingEntityInventoryChangeEvent`
+- ECS core: `Store`, `Ref`, `ArchetypeChunk`, `Query`, `EntityEventSystem`, `EntityStore`, `PlayerRef`
+
+## ECS and Entity/Player Core (Observed Classes)
+
+Core ECS types:
+
+- `com.hypixel.hytale.component.Store` (add/remove entities, components, invoke ECS events)
+- `com.hypixel.hytale.component.Ref` (store + index reference with validation)
+- `com.hypixel.hytale.component.ArchetypeChunk`
+- `com.hypixel.hytale.component.system.EntityEventSystem`
+
+Entity storage and player bridge:
+
+- `com.hypixel.hytale.server.core.universe.world.storage.EntityStore`
+- `com.hypixel.hytale.server.core.universe.PlayerRef` (Component + IMessageReceiver)
+
+Common entity components (examples):
+
+- `server.core.modules.entity.component.TransformComponent`
+- `server.core.modules.entity.component.DisplayNameComponent`
+- `server.core.modules.entity.player.PlayerSkinComponent`
+- `server.core.modules.entity.item.ItemComponent`
+
+From `javap`, `PlayerRef` exposes identity, messaging, and movement helpers:
+`getUuid()`, `getUsername()`, `getReference()`, `getTransform()`, `updatePosition(...)`,
+`sendMessage(Message)`.
+
+Decompiled event field examples (selected):
+
+- `PlayerChatEvent` is async + cancellable; holds `sender`, `targets`, `content`, and a `Formatter`.
+- `BreakBlockEvent` carries `itemInHand`, `targetBlock`, `blockType`.
+- `PlaceBlockEvent` carries `itemInHand`, `targetBlock`, `rotation`.
+- `UseBlockEvent.Pre` is cancellable with `interactionType`, `context`, `targetBlock`, `blockType`.
+
 ## Permissions and Access Control
 
 Permissions appear to be a first-class module with events and commands:
@@ -617,9 +659,36 @@ These examples are derived from class names above; confirm APIs before implement
 30. **Access control workflows**  
     Extend `server.core.modules.accesscontrol` and `RequestServerAccess` for approval queues.
 
+31. **Player position audit**  
+    Read `PlayerRef.getTransform()` and `TransformComponent` to log or gate movement patterns.
+
+32. **Nameplate overrides**  
+    Use `DisplayNameComponent` to apply role-based display names in-world.
+
+33. **Entity inventory watcher**  
+    Listen for `LivingEntityInventoryChangeEvent` and inspect `ItemComponent` for balance checks.
+
+34. **Loot filter rules**  
+    Use `InteractivelyPickupItemEvent` and `DropItemEvent` for auto-pickup filters or anti-theft logic.
+
+35. **Hotbar ability switching**  
+    Use `SwitchActiveSlotEvent` to toggle tool modes or ability bars.
+
+36. **Crafting gatekeeper**  
+    Use `CraftRecipeEvent` to restrict recipes by zone, role, or progression.
+
+37. **Unique item gating**  
+    Track `UniqueItemUsagesComponent` to limit one-time rewards or items.
+
+38. **Dropped item tuning**  
+    Adjust pickup/merge timing using `ItemComponent` delays and `DropItemEvent` data.
+
+39. **Movement-state rules**  
+    Use `MovementStatesComponent` to gate actions while sprinting, crouching, or gliding.
+
 ## Known Limits of This Dissection
 
-- No decompilation performed; signatures and behavior are inferred.
+- Partial decompilation performed; coverage is limited to extracted source subsets.
 - Some classes may be internal-only and not exposed to plugins.
 - Names can change between server builds; verify against your target JAR.
 

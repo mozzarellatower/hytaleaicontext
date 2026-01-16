@@ -39,6 +39,25 @@ Notable core sub-systems (by package density):
 - `universe` (world/universe management)
 - `entity`, `inventory`, `auth`, `permissions`, `ui`, `cosmetics`
 
+## ECS and player bridge (JAR-derived)
+
+The runtime uses an ECS-style store:
+
+- `com.hypixel.hytale.component.Store` and `com.hypixel.hytale.component.Ref`
+- `com.hypixel.hytale.server.core.universe.world.storage.EntityStore`
+- `com.hypixel.hytale.component.system.EntityEventSystem`
+
+Player entities are bridged by `com.hypixel.hytale.server.core.universe.PlayerRef`, which is a
+`Component<EntityStore>` and `IMessageReceiver`. `javap` shows helpers for identity, messaging,
+and movement: `getUuid()`, `getUsername()`, `getReference()`, `getTransform()`,
+`updatePosition(...)`, `sendMessage(Message)`.
+
+From decompiled sources:
+
+- `PlayerRef.getComponent(...)` is deprecated and logs if called off-thread.
+- `PlayerRef.referToServer(host, port, data)` enforces a 4096-byte max payload.
+- `EntityStore` assigns network IDs with an `AtomicInteger` starting at 1.
+
 ## Entry point and runtime
 
 Start with:

@@ -9,6 +9,7 @@ This folder contains documentation for developing Hytale server plugins.
 | [HytaleServer-Plugin-API.md](./HytaleServer-Plugin-API.md) | Complete API reference for plugin development |
 | [HytaleServer-Plugin-Examples.md](./HytaleServer-Plugin-Examples.md) | Practical examples plus external example index (27 projects) |
 | [Structures-Guide.md](./Structures-Guide.md) | Guide for saving and loading structures (prefabs) |
+| [Plugin-Starter.md](./Plugin-Starter.md) | Buildable starter template (Java 21 + manifest.json) |
 
 ## Quick Links
 
@@ -52,6 +53,10 @@ This folder contains documentation for developing Hytale server plugins.
 27. Permissions and Moderation
 
 External example projects are referenced in `plugins/HytaleServer-Plugin-Examples.md`.
+
+### Onboarding
+- Buildable starter template: `plugins/Plugin-Starter.md`
+- Verified use-case ideas: `plugins/HytaleServer-Plugin-Examples.md` (Use-Case Ideas section)
 
 ## See Also
 

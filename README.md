@@ -40,6 +40,7 @@ If you are an agent, start with:
 - JAR map and built-in plugin manifests: `HytaleServer-Dissection.md`
 - Plugin API reference: `plugins/HytaleServer-Plugin-API.md`
 - Plugin examples: `plugins/HytaleServer-Plugin-Examples.md`
+- Plugin starter template: `plugins/Plugin-Starter.md`
 - Structures guide (prefabs): `plugins/Structures-Guide.md`
 
 Additional docs:

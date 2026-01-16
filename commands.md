@@ -60,6 +60,54 @@ From string scans of local sample `.jar` mods (not included in this repo):
 
 These are class-level observations, not confirmed command names. Use `/commands` or logs to discover actual labels.
 
+### Observed mod commands (decompiled local samples)
+
+The following command labels and permission gates are taken from decompiled local mods. Treat as examples and verify on your server build.
+
+- AdminUI: `admin` command plus shortcut labels `wl`, `whitelists`, `m`, `mute`, `b`, `bans`, `p`, `players`, `w`, `warps`, `bk`, `backup`, `st`, `stats`.
+  Uses `AbstractAsyncCommand`, `setPermissionGroups("OP")`, and `setPermissionGroup(GameMode.Creative)` on shortcuts.
+- AdvancedItemInfo: `advancedinfo` with aliases `aii`, `iteminfo`; uses `AbstractCommand`, `setPermissionGroup(GameMode.Adventure)`,
+  and an optional arg `s` ("Default Search") via `SingleArgumentType` (examples include `iron`, `stone`).
+- BetterModlist: `modlist`; uses `AbstractAsyncCommand` and `setPermissionGroup(GameMode.Adventure)`.
+- Hybrid: `hybrid`; uses `setPermissionGroup(GameMode.Creative)`.
+
+Permissions module usage observed in local mods:
+
+- Some mods call `PermissionsModule.get().getGroupsForUser(uuid)` and check for `"OP"` group membership for access checks.
+
+### Observed mod behaviors (non-command)
+
+- LuckyMining registers an `EntityEventSystem` for `BreakBlockEvent` and uses
+  `ParticleUtil.spawnParticleEffect` plus `SoundUtil.playSoundEvent2dToPlayer` for
+  feedback.
+- AdminUI uses `registerGlobal(PlayerConnectEvent)` for player tracking and
+  `registerGlobal(PlayerChatEvent)` to implement mute checks, and listens to
+  `LoadedAssetsEvent<ModelAsset>` for model lists.
+- ThePickaxesPlaceTorches registers a custom `Interaction` codec and uses
+  `BlockPlaceUtils.placeBlock` to place torches based on `InteractionContext`.
+- Hybrid registers `EntityEventSystem` handlers for `BreakBlockEvent`,
+  `PlaceBlockEvent`, and `UseBlockEvent.Pre`, and registers global
+  `PlayerReadyEvent` plus `LoadedAssetsEvent<Item>`/`LoadedAssetsEvent<BlockType>`
+  listeners (classes `HybridBreakBlockEventSystem`, `HybridPlaceBlockEventSystem`,
+  `HybridUseBlockEventSystem`, `_RegisterHybridEvents`).
+- InfiniteMana registers `PlayerTickCallback.ON_PLAYER_TICK` and sets
+  `HybridEntityStatType.MANA` to max each tick via `EntityStatFunctions`, gated by
+  config flag `givePlayersInfiniteMana` (classes `PlayerCallbacks`,
+  `ConfigHandler`).
+- TreeHarvester registers `EntityBreakBlockCallback.ENTITY_BREAK_BLOCK` and, on
+  log breaks, gathers connected tree blocks to drop logs/leaves, optionally
+  replants saplings, and optionally decreases tool durability (classes
+  `EntityCallbacks`, `Util`, `ConfigHandler`).
+- Ymmersive Melodies registers `Interaction` codec
+  `Ymmersive_Melodies_Melody_Playback` (plays note sound events in `tick0`) and
+  `OpenCustomUIInteraction` page codec `Ymmersive_Melodies_Selection` for custom
+  UI (classes `YmmersiveMelodies`, `MelodyPlaybackInteraction`,
+  `MelodySelectionSupplier`).
+- Spellbook registers `Interaction` codecs `DarkhaxSpellbookWarpHome` (teleport
+  to nearest respawn) and `DarkhaxSpellbookBlockPush` (applies `Velocity`), plus
+  `BlockState` types `ItemGeneratorState` and `ConveyorState` (classes
+  `Spellbook`, `WarpHomeInteraction`, `BlockPushInteraction`).
+
 ## Core commands (inferred from the server jar)
 
 I scanned `serverexample/Server/HytaleServer.jar` for command classes. The exact command labels and arguments can differ from class names, so treat this as a likely set and use `/help` or `/commands` to confirm syntax.

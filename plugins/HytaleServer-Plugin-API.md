@@ -511,6 +511,20 @@ All events are in the `com.hypixel.hytale` package prefix.
 |------------|-------------|
 | `LoadedAssetsEvent` | Assets finished loading |
 
+### Observed in Local Mods (Decompiled)
+
+Local decompiled mods show these concrete `EventRegistry` usages:
+
+- `registerGlobal(PlayerConnectEvent.class, ...)`
+- `registerGlobal(PlayerChatEvent.class, ...)`
+- `registerGlobal(PlayerReadyEvent.class, ...)`
+- `register(LoadedAssetsEvent.class, Item.class, ...)`
+- `register(LoadedAssetsEvent.class, CraftingRecipe.class, ...)`
+- `register(LoadedAssetsEvent.class, ModelAsset.class, ...)`
+- `register(RemovedAssetsEvent.class, CraftingRecipe.class, ...)`
+
+Some mods wrap event handling in their own callback layers (for example, `PlayerTickCallback` and `EntityBreakBlockCallback`) rather than directly using `EventRegistry`.
+
 **Deprecations noted on hytalemodding.dev (see `https://hytalemodding.dev/en/docs/server/events`):**
 
 - `LivingEntityUseBlockEvent`
@@ -615,6 +629,29 @@ From `https://hytalemodding.dev/en/docs/server/events`:
 
 ---
 
+### Decompiled Event Details (Selected)
+
+These are pulled from decompiled classes in the server JAR:
+
+- `PlayerChatEvent` implements `IAsyncEvent` and `ICancellable`.
+  - Fields: `sender` (`PlayerRef`), `targets` (`List`), `content` (`String`).
+  - Formatter: `PlayerChatEvent.Formatter` + `DEFAULT_FORMATTER` uses translation key
+    `server.chat.playerMessage` with `username` and `message` params.
+- `PlayerConnectEvent` stores `Holder`, `PlayerRef`, and optional `World`.
+  - `getPlayer()` is deprecated; prefer `getPlayerRef()` / `getHolder()`.
+- `PlayerDisconnectEvent` exposes `getDisconnectReason()` from `PacketHandler`.
+- `PlayerReadyEvent` includes a `readyId` integer.
+- `BreakBlockEvent` includes `itemInHand`, `targetBlock` (`Vector3i`), `blockType`.
+- `PlaceBlockEvent` includes `itemInHand`, `targetBlock`, and `rotation` (`RotationTuple`).
+- `UseBlockEvent` includes `interactionType`, `context`, `targetBlock`, `blockType`.
+  - `UseBlockEvent.Pre` implements `ICancellableEcsEvent`; `Post` is non-cancellable.
+- `CraftRecipeEvent` includes `craftedRecipe` and `quantity` with `Pre`/`Post` subclasses.
+- `DropItemEvent.PlayerRequest` includes `inventorySectionId` and `slotId`.
+- `DropItemEvent.Drop` includes `itemStack` and `throwSpeed`.
+- `SwitchActiveSlotEvent` includes `inventorySectionId`, `previousSlot`, `newSlot`, `serverRequest`.
+
+---
+
 ## Event Registry Notes (javap)
 
 `com.hypixel.hytale.event.EventRegistry` supports additional registration patterns beyond the basic examples:
@@ -635,11 +672,44 @@ The ECS lives under `com.hypixel.hytale.component` in the server JAR. Core types
 
 Entity components are stored in `com.hypixel.hytale.server.core.universe.world.storage.EntityStore` and typically accessed via `Store<EntityStore>` and `Ref<EntityStore>`. Plugin registries expose `getEntityStoreRegistry()` and `getChunkStoreRegistry()` for component systems (see Registries Reference).
 
+Key APIs observed via `javap`:
+
+- `Store` entity helpers: `addEntity(...)`, `removeEntity(...)`, `addComponent(...)`,
+  `getComponent(...)`, `invoke(EcsEvent)`, `forEachChunk(...)`, `tick(float)`.
+- `Ref` helpers: `getStore()`, `getIndex()`, `validate()`, `isValid()`.
+- `EntityStore` helpers: `getStore()`, `getRefFromUUID(UUID)`, `getRefFromNetworkId(int)`,
+  `takeNextNetworkId()`, `getWorld()`.
+
+`PlayerRef` is a `Component<EntityStore>` and `IMessageReceiver` with player identity and
+movement helpers, including `getUuid()`, `getUsername()`, `getReference()`, `getTransform()`,
+`updatePosition(World, Transform, Vector3f)`, and `sendMessage(Message)`.
+
+ECS events are handled in systems derived from:
+
+- `com.hypixel.hytale.component.system.EntityEventSystem` with
+  `handle(int, ArchetypeChunk<ECS_TYPE>, Store<ECS_TYPE>, CommandBuffer<ECS_TYPE>, EventType)`.
+
 Practical notes from the JAR:
 
 - `Store` component APIs use `ComponentType` (not Java classes). Many built-in components expose a `getComponentType()` static.
 - `Store.ensureComponent(...)` returns void; use `ensureAndGetComponent(...)` to retrieve a component after ensuring it exists.
 - `Store.addEntity(...)` expects an `Archetype` and `AddReason`; the store is supplied by the server, not constructed manually.
+- `Store.assertThread()` throws if called off the owning store thread; `assertWriteProcessing()` fails if invoked from an active system.
+- `PlayerRef.getComponent(...)` is deprecated; it will log and marshal to the world thread if called asynchronously.
+
+Decompiled component details (selected):
+
+- `TransformComponent` stores `position` (`Vector3d`), `rotation` (`Vector3f`), and a `ModelTransform` for sent state.
+  - Helpers: `teleportPosition(...)`, `teleportRotation(...)`, `markChunkDirty(...)`.
+- `DisplayNameComponent` stores an optional `Message` display name.
+- `PlayerSkinComponent` wraps `PlayerSkin` and tracks `isNetworkOutdated`.
+- `MovementStatesComponent` holds current and sent `MovementStates`.
+- `UUIDComponent` supports `generateVersion3UUID()` and `randomUUID()`.
+- `UniqueItemUsagesComponent` tracks a set of used unique item IDs.
+- `ItemComponent` exposes pickup/merge delays and drop helpers.
+  - Constants: `DEFAULT_PICKUP_DELAY = 0.5`, `PICKUP_DELAY_DROPPED = 1.5`,
+    `PICKUP_THROTTLE = 0.25`, `DEFAULT_MERGE_DELAY = 1.5`.
+  - Helpers: `generateItemDrops(...)`, `generatePickedUpItem(...)`, `addToItemContainer(...)`.
 
 ## Command System
 
@@ -709,6 +779,10 @@ protected void execute(CommandContext commandContext,
 - `AbstractCommand(String name, String description)`
 - `AbstractCommand(String name, String description, boolean requiresConfirmation)`
 - `AbstractCommand(String name)`
+
+**Permission helpers on AbstractCommand (javap):**
+- `setPermissionGroup(GameMode)` for gamemode-gated commands
+- `setPermissionGroups(String...)` for named permission groups (for example, `OP`)
 
 **AbstractCommand execute signature (javap):**
 
