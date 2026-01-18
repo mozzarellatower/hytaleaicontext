@@ -259,13 +259,13 @@ import com.hypixel.hytale.server.core.event.events.player.PlayerConnectEvent;
 import com.hypixel.hytale.server.core.event.events.player.PlayerDisconnectEvent;
 import com.hypixel.hytale.server.core.universe.PlayerRef;
 
-getEventRegistry().register(PlayerConnectEvent.class, event -> {
+getEventRegistry().registerGlobal(PlayerConnectEvent.class, event -> {
     PlayerRef playerRef = event.getPlayerRef();
     Ref<EntityStore> ref = playerRef.getReference();
     ref.getStore().addComponent(ref, customType, new CustomData());
 });
 
-getEventRegistry().register(PlayerDisconnectEvent.class, event -> {
+getEventRegistry().registerGlobal(PlayerDisconnectEvent.class, event -> {
     PlayerRef playerRef = event.getPlayerRef();
     Ref<EntityStore> ref = playerRef.getReference();
     CustomData data = ref.getStore().getComponent(ref, customType);
@@ -419,18 +419,18 @@ public final class AnnouncerPlugin extends JavaPlugin {
     @Override
     public void setup() {
         // Register with different priorities
-        getEventRegistry().register(
+        getEventRegistry().registerGlobal(
             EventPriority.NORMAL,
             PlayerConnectEvent.class,
             this::onPlayerConnect
         );
 
-        getEventRegistry().register(
+        getEventRegistry().registerGlobal(
             PlayerReadyEvent.class,
             this::onPlayerReady
         );
 
-        getEventRegistry().register(
+        getEventRegistry().registerGlobal(
             EventPriority.LATE,
             PlayerDisconnectEvent.class,
             this::onPlayerDisconnect
@@ -466,11 +466,17 @@ public final class AnnouncerPlugin extends JavaPlugin {
 ```java
 package com.example.protection;
 
+import com.hypixel.hytale.component.Archetype;
+import com.hypixel.hytale.component.ArchetypeChunk;
+import com.hypixel.hytale.component.CommandBuffer;
+import com.hypixel.hytale.component.Store;
+import com.hypixel.hytale.component.query.Query;
+import com.hypixel.hytale.component.system.EntityEventSystem;
 import com.hypixel.hytale.server.core.plugin.JavaPlugin;
 import com.hypixel.hytale.server.core.plugin.JavaPluginInit;
 import com.hypixel.hytale.server.core.event.events.ecs.BreakBlockEvent;
 import com.hypixel.hytale.server.core.event.events.ecs.PlaceBlockEvent;
-import com.hypixel.hytale.event.EventPriority;
+import com.hypixel.hytale.server.core.universe.world.storage.EntityStore;
 import java.util.HashSet;
 import java.util.Set;
 import javax.annotation.Nonnull;
@@ -486,18 +492,8 @@ public final class ProtectionPlugin extends JavaPlugin {
 
     @Override
     public void setup() {
-        // Register with FIRST priority to cancel before other plugins process
-        getEventRegistry().register(
-            EventPriority.FIRST,
-            BreakBlockEvent.class,
-            this::onBlockBreak
-        );
-
-        getEventRegistry().register(
-            EventPriority.FIRST,
-            PlaceBlockEvent.class,
-            this::onBlockPlace
-        );
+        getEntityStoreRegistry().registerSystem(new BreakProtectSystem());
+        getEntityStoreRegistry().registerSystem(new PlaceProtectSystem());
 
         // Add some protected regions
         protectedRegions.add("spawn");
@@ -513,15 +509,46 @@ public final class ProtectionPlugin extends JavaPlugin {
         protectedRegions.clear();
     }
 
-    private void onBlockBreak(BreakBlockEvent event) {
-        // Check if block is in protected region
-        // If protected and player doesn't have permission, cancel the event
-        // event.setCancelled(true); // if ICancellable
-        getLogger().info("Block break at: " + event.getPosition());
+    private final class BreakProtectSystem extends EntityEventSystem<EntityStore, BreakBlockEvent> {
+        private BreakProtectSystem() {
+            super(BreakBlockEvent.class);
+        }
+
+        @Override
+        public void handle(int index,
+                           ArchetypeChunk<EntityStore> archetypeChunk,
+                           Store<EntityStore> store,
+                           CommandBuffer<EntityStore> commandBuffer,
+                           BreakBlockEvent event) {
+            // Check if block is in protected region, then cancel if needed.
+            // event.setCancelled(true);
+            getLogger().info("Block break at: " + event.getTargetBlock());
+        }
+
+        @Override
+        public Query<EntityStore> getQuery() {
+            return Archetype.empty();
+        }
     }
 
-    private void onBlockPlace(PlaceBlockEvent event) {
-        getLogger().info("Block place at: " + event.getPosition());
+    private final class PlaceProtectSystem extends EntityEventSystem<EntityStore, PlaceBlockEvent> {
+        private PlaceProtectSystem() {
+            super(PlaceBlockEvent.class);
+        }
+
+        @Override
+        public void handle(int index,
+                           ArchetypeChunk<EntityStore> archetypeChunk,
+                           Store<EntityStore> store,
+                           CommandBuffer<EntityStore> commandBuffer,
+                           PlaceBlockEvent event) {
+            getLogger().info("Block place at: " + event.getTargetBlock());
+        }
+
+        @Override
+        public Query<EntityStore> getQuery() {
+            return Archetype.empty();
+        }
     }
 
     public void addProtectedRegion(String name) {
@@ -632,7 +659,7 @@ public final class DelayedWelcomePlugin extends JavaPlugin {
 
     @Override
     public void setup() {
-        getEventRegistry().register(PlayerConnectEvent.class, this::onConnect);
+        getEventRegistry().registerGlobal(PlayerConnectEvent.class, this::onConnect);
     }
 
     @Override
@@ -767,8 +794,8 @@ public final class PlayTimePlugin extends JavaPlugin {
 
     @Override
     public void setup() {
-        getEventRegistry().register(PlayerConnectEvent.class, this::onJoin);
-        getEventRegistry().register(PlayerDisconnectEvent.class, this::onLeave);
+        getEventRegistry().registerGlobal(PlayerConnectEvent.class, this::onJoin);
+        getEventRegistry().registerGlobal(PlayerDisconnectEvent.class, this::onLeave);
     }
 
     @Override
@@ -917,7 +944,7 @@ public final class ChatFilterPlugin extends JavaPlugin {
         buildFilterPattern();
 
         // Register with FIRST priority to filter before other plugins see the message
-        getEventRegistry().register(
+        getEventRegistry().registerGlobal(
             EventPriority.FIRST,
             PlayerChatEvent.class,
             this::onChat
@@ -1002,7 +1029,7 @@ public final class ChatPrefixPlugin extends JavaPlugin {
         rankPrefixes.put("vip", "[VIP]");
         rankPrefixes.put("default", "");
 
-        getEventRegistry().register(
+        getEventRegistry().registerGlobal(
             EventPriority.EARLY,
             PlayerChatEvent.class,
             this::onChat
@@ -1052,9 +1079,16 @@ public final class ChatPrefixPlugin extends JavaPlugin {
 ```java
 package com.example.customblocks;
 
+import com.hypixel.hytale.component.Archetype;
+import com.hypixel.hytale.component.ArchetypeChunk;
+import com.hypixel.hytale.component.CommandBuffer;
+import com.hypixel.hytale.component.Store;
+import com.hypixel.hytale.component.query.Query;
+import com.hypixel.hytale.component.system.EntityEventSystem;
 import com.hypixel.hytale.server.core.plugin.JavaPlugin;
 import com.hypixel.hytale.server.core.plugin.JavaPluginInit;
 import com.hypixel.hytale.server.core.event.events.ecs.UseBlockEvent;
+import com.hypixel.hytale.server.core.universe.world.storage.EntityStore;
 import javax.annotation.Nonnull;
 
 public final class CustomBlocksPlugin extends JavaPlugin {
@@ -1065,7 +1099,7 @@ public final class CustomBlocksPlugin extends JavaPlugin {
 
     @Override
     public void setup() {
-        getEventRegistry().register(UseBlockEvent.class, this::onBlockUse);
+        getEntityStoreRegistry().registerSystem(new UseBlockSystem());
     }
 
     @Override
@@ -1076,16 +1110,31 @@ public final class CustomBlocksPlugin extends JavaPlugin {
     @Override
     public void shutdown() {}
 
-    private void onBlockUse(UseBlockEvent event) {
-        // Get block type at position
-        // Handle custom interactions based on block type
+    private final class UseBlockSystem extends EntityEventSystem<EntityStore, UseBlockEvent.Pre> {
+        private UseBlockSystem() {
+            super(UseBlockEvent.Pre.class);
+        }
 
-        getLogger().info("Block used at: " + event.getPosition());
+        @Override
+        public void handle(int index,
+                           ArchetypeChunk<EntityStore> archetypeChunk,
+                           Store<EntityStore> store,
+                           CommandBuffer<EntityStore> commandBuffer,
+                           UseBlockEvent.Pre event) {
+            // Get block type at position
+            // Handle custom interactions based on block type
+            getLogger().info("Block used at: " + event.getTargetBlock());
 
-        // Example: Check if it's a custom "teleporter" block
-        // if (isCustomTeleporter(event.getPosition())) {
-        //     teleportPlayer(event.getPlayer(), getDestination(event.getPosition()));
-        // }
+            // Example: resolve player from event.getContext().getEntity()
+            // if (isCustomTeleporter(event.getTargetBlock())) {
+            //     teleportPlayer(player, getDestination(event.getTargetBlock()));
+            // }
+        }
+
+        @Override
+        public Query<EntityStore> getQuery() {
+            return Archetype.empty();
+        }
     }
 }
 ```
@@ -1095,9 +1144,16 @@ public final class CustomBlocksPlugin extends JavaPlugin {
 ```java
 package com.example.rewards;
 
+import com.hypixel.hytale.component.Archetype;
+import com.hypixel.hytale.component.ArchetypeChunk;
+import com.hypixel.hytale.component.CommandBuffer;
+import com.hypixel.hytale.component.Store;
+import com.hypixel.hytale.component.query.Query;
+import com.hypixel.hytale.component.system.EntityEventSystem;
 import com.hypixel.hytale.server.core.plugin.JavaPlugin;
 import com.hypixel.hytale.server.core.plugin.JavaPluginInit;
 import com.hypixel.hytale.server.core.event.events.ecs.BreakBlockEvent;
+import com.hypixel.hytale.server.core.universe.world.storage.EntityStore;
 import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
@@ -1120,7 +1176,7 @@ public final class BlockRewardsPlugin extends JavaPlugin {
         blockExperience.put("gold_ore", 10);
         blockExperience.put("diamond_ore", 25);
 
-        getEventRegistry().register(BreakBlockEvent.class, this::onBlockBreak);
+        getEntityStoreRegistry().registerSystem(new BreakRewardsSystem());
     }
 
     @Override
@@ -1131,18 +1187,32 @@ public final class BlockRewardsPlugin extends JavaPlugin {
     @Override
     public void shutdown() {}
 
-    private void onBlockBreak(BreakBlockEvent event) {
-        // Get block type (implementation depends on actual API)
-        String blockType = "stone"; // placeholder
+    private final class BreakRewardsSystem extends EntityEventSystem<EntityStore, BreakBlockEvent> {
+        private BreakRewardsSystem() {
+            super(BreakBlockEvent.class);
+        }
 
-        int baseXp = blockExperience.getOrDefault(blockType, 0);
+        @Override
+        public void handle(int index,
+                           ArchetypeChunk<EntityStore> archetypeChunk,
+                           Store<EntityStore> store,
+                           CommandBuffer<EntityStore> commandBuffer,
+                           BreakBlockEvent event) {
+            String blockType = event.getBlockType().getId();
+            int baseXp = blockExperience.getOrDefault(blockType, 0);
 
-        if (baseXp > 0) {
-            // Add some randomness
-            int xp = baseXp + random.nextInt(baseXp / 2 + 1);
+            if (baseXp > 0) {
+                // Add some randomness
+                int xp = baseXp + random.nextInt(baseXp / 2 + 1);
 
-            // Award XP to player
-            getLogger().info("Awarding " + xp + " XP for breaking " + blockType);
+                // Award XP to player
+                getLogger().info("Awarding " + xp + " XP for breaking " + blockType);
+            }
+        }
+
+        @Override
+        public Query<EntityStore> getQuery() {
+            return Archetype.empty();
         }
     }
 }
@@ -1279,7 +1349,7 @@ public final class EconomyPlugin extends JavaPlugin {
 
     @Override
     public void setup() {
-        getEventRegistry().register(PlayerConnectEvent.class, this::onPlayerJoin);
+        getEventRegistry().registerGlobal(PlayerConnectEvent.class, this::onPlayerJoin);
 
         getCommandRegistry().registerCommand(new BalanceCommand());
         getCommandRegistry().registerCommand(new PayCommand());
@@ -1534,8 +1604,8 @@ public final class PermissionAuditPlugin extends JavaPlugin {
     @Override
     public void setup() {
         auditLog = getDataDirectory().resolve("permission-audit.log");
-        getEventRegistry().register(PlayerPermissionChangeEvent.class, this::onPlayerPermChange);
-        getEventRegistry().register(PlayerGroupEvent.class, this::onPlayerGroupChange);
+        getEventRegistry().registerGlobal(PlayerPermissionChangeEvent.class, this::onPlayerPermChange);
+        getEventRegistry().registerGlobal(PlayerGroupEvent.class, this::onPlayerGroupChange);
         getEventRegistry().register(GroupPermissionChangeEvent.class, this::onGroupPermChange);
     }
 
@@ -1939,17 +2009,17 @@ public void setup() {
 }
 
 private void registerPlayerEvents() {
-    getEventRegistry().register(PlayerConnectEvent.class, this::onConnect);
-    getEventRegistry().register(PlayerDisconnectEvent.class, this::onDisconnect);
+    getEventRegistry().registerGlobal(PlayerConnectEvent.class, this::onConnect);
+    getEventRegistry().registerGlobal(PlayerDisconnectEvent.class, this::onDisconnect);
 }
 
 private void registerBlockEvents() {
-    getEventRegistry().register(BreakBlockEvent.class, this::onBreak);
-    getEventRegistry().register(PlaceBlockEvent.class, this::onPlace);
+    getEntityStoreRegistry().registerSystem(new BreakBlockSystem());
+    getEntityStoreRegistry().registerSystem(new PlaceBlockSystem());
 }
 
 private void registerChatEvents() {
-    getEventRegistry().register(PlayerChatEvent.class, this::onChat);
+    getEventRegistry().registerGlobal(PlayerChatEvent.class, this::onChat);
 }
 ```
 
@@ -2351,10 +2421,10 @@ public final class AFKPlugin extends JavaPlugin {
         scheduler = Executors.newSingleThreadScheduledExecutor();
 
         // Track activity events
-        getEventRegistry().register(PlayerConnectEvent.class, this::onConnect);
-        getEventRegistry().register(PlayerDisconnectEvent.class, this::onDisconnect);
-        getEventRegistry().register(PlayerChatEvent.class, this::onChat);
-        getEventRegistry().register(PlayerInteractEvent.class, this::onInteract);
+        getEventRegistry().registerGlobal(PlayerConnectEvent.class, this::onConnect);
+        getEventRegistry().registerGlobal(PlayerDisconnectEvent.class, this::onDisconnect);
+        getEventRegistry().registerGlobal(PlayerChatEvent.class, this::onChat);
+        getEventRegistry().registerGlobal(PlayerInteractEvent.class, this::onInteract);
 
         getCommandRegistry().registerCommand(new AFKCommand());
     }
@@ -2764,10 +2834,10 @@ public final class CombatLogPlugin extends JavaPlugin {
     public void setup() {
         scheduler = Executors.newSingleThreadScheduledExecutor();
 
-        getEventRegistry().register(PlayerDisconnectEvent.class, this::onDisconnect);
+        getEventRegistry().registerGlobal(PlayerDisconnectEvent.class, this::onDisconnect);
 
         // Would also register for damage events to tag players in combat
-        // getEventRegistry().register(PlayerDamageEvent.class, this::onDamage);
+        // getEventRegistry().registerGlobal(PlayerDamageEvent.class, this::onDamage);
     }
 
     @Override
@@ -3057,7 +3127,7 @@ public final class MessagingPlugin extends JavaPlugin {
 
     @Override
     public void setup() {
-        getEventRegistry().register(PlayerDisconnectEvent.class, this::onDisconnect);
+        getEventRegistry().registerGlobal(PlayerDisconnectEvent.class, this::onDisconnect);
 
         getCommandRegistry().registerCommand(new MessageCommand());
         getCommandRegistry().registerCommand(new ReplyCommand());
@@ -3205,7 +3275,7 @@ public final class SpawnPlugin extends JavaPlugin {
     public void setup() {
         loadSpawns();
 
-        getEventRegistry().register(PlayerConnectEvent.class, this::onConnect);
+        getEventRegistry().registerGlobal(PlayerConnectEvent.class, this::onConnect);
 
         getCommandRegistry().registerCommand(new SpawnCommand());
         getCommandRegistry().registerCommand(new SetSpawnCommand());
@@ -3529,7 +3599,7 @@ public final class DailyRewardsPlugin extends JavaPlugin {
         loadData();
         setupRewards();
 
-        getEventRegistry().register(PlayerConnectEvent.class, this::onConnect);
+        getEventRegistry().registerGlobal(PlayerConnectEvent.class, this::onConnect);
         getCommandRegistry().registerCommand(new DailyCommand());
         getCommandRegistry().registerCommand(new StreakCommand());
     }

@@ -112,7 +112,7 @@ import com.hypixel.hytale.server.core.event.events.player.PlayerReadyEvent;
 @Override
 protected void setup() {
     getCommandRegistry().registerCommand(new HelloCommand());
-    getEventRegistry().register(PlayerReadyEvent.class, event -> {
+    getEventRegistry().registerGlobal(PlayerReadyEvent.class, event -> {
         getLogger().info("Player ready: " + event.getPlayer().getName());
     });
 }
@@ -129,11 +129,11 @@ import com.hypixel.hytale.server.core.command.system.arguments.types.ArgTypes;
 import java.util.concurrent.CompletableFuture;
 
 public final class HelloCommand extends AbstractCommand {
-    private final RequiredArg<String> nameArg =
-        new RequiredArg<>(this, "name", "Player name", ArgTypes.STRING);
+    private final RequiredArg<String> nameArg;
 
     public HelloCommand() {
         super("hello", "Say hello");
+        nameArg = withRequiredArg("name", "Player name", ArgTypes.STRING);
     }
 
     @Override
@@ -156,7 +156,7 @@ getCommandRegistry().registerCommand(new HelloCommand());
 ```java
 import com.hypixel.hytale.server.core.event.events.player.PlayerReadyEvent;
 
-getEventRegistry().register(PlayerReadyEvent.class, event -> {
+getEventRegistry().registerGlobal(PlayerReadyEvent.class, event -> {
     getLogger().info("Player ready: " + event.getPlayer().getName());
 });
 ```

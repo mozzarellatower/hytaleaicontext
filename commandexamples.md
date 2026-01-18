@@ -1,21 +1,43 @@
-# Custom command examples (template)
+# Custom command examples (JAR-style patterns)
 
-These examples are intentionally generic so they can be adapted to the official Hytale SDK. Replace API names and types with the ones in your SDK version.
+These examples use the JAR command system (`AbstractCommand`, `CommandRegistry`,
+`CommandContext`, `ArgTypes`). Replace placeholder module calls with the APIs
+for your server build.
+
+Registration (JAR):
+
+```java
+import com.hypixel.hytale.server.core.command.system.CommandRegistry;
+
+CommandRegistry registry = ...; // Obtain from your plugin entry point.
+registry.registerCommand(new PingCommand());
+```
 
 ## Example 1: Simple ping command
 
 Goal: add `/myping` that replies with a latency message.
 
-Pseudo-code:
-
 ```java
-public final class MyMod {
-  public void onEnable(Server server) {
-    server.getCommands().register("myping", (ctx) -> {
-      Player player = ctx.getPlayer();
-      int ms = player.getPingMs();
-      player.sendMessage("Pong: " + ms + "ms");
-    });
+import com.hypixel.hytale.server.core.Message;
+import com.hypixel.hytale.server.core.command.system.AbstractCommand;
+import com.hypixel.hytale.server.core.command.system.CommandContext;
+import java.util.concurrent.CompletableFuture;
+
+public final class PingCommand extends AbstractCommand {
+  public PingCommand() {
+    super("myping", "Replies with latency");
+  }
+
+  @Override
+  protected CompletableFuture<Void> execute(CommandContext context) {
+    if (!context.isPlayer()) {
+      context.sendMessage(Message.raw("Player-only command."));
+      return CompletableFuture.completedFuture(null);
+    }
+
+    // TODO: replace with your ping accessor.
+    context.sendMessage(Message.raw("Pong"));
+    return CompletableFuture.completedFuture(null);
   }
 }
 ```
@@ -26,25 +48,39 @@ In-game:
 /myping
 ```
 
-## Example 2: Give item command
+## Example 2: Give coins command
 
 Goal: add `/givecoins <player> <amount>`.
 
 ```java
-server.getCommands().register("givecoins", (ctx) -> {
-  String targetName = ctx.arg(0);
-  int amount = ctx.argInt(1);
+import com.hypixel.hytale.server.core.Message;
+import com.hypixel.hytale.server.core.command.system.AbstractCommand;
+import com.hypixel.hytale.server.core.command.system.CommandContext;
+import com.hypixel.hytale.server.core.command.system.arguments.system.RequiredArg;
+import com.hypixel.hytale.server.core.command.system.arguments.types.ArgTypes;
+import com.hypixel.hytale.server.core.universe.PlayerRef;
+import java.util.concurrent.CompletableFuture;
 
-  Player target = server.getPlayerByName(targetName);
-  if (target == null) {
-    ctx.replyError("Player not found: " + targetName);
-    return;
+public final class GiveCoinsCommand extends AbstractCommand {
+  private final RequiredArg<PlayerRef> targetArg;
+  private final RequiredArg<Integer> amountArg;
+
+  public GiveCoinsCommand() {
+    super("givecoins", "Give coins to a player");
+    targetArg = withRequiredArg("target", "Target player", ArgTypes.PLAYER_REF);
+    amountArg = withRequiredArg("amount", "Amount", ArgTypes.INTEGER);
   }
 
-  Coins coins = target.getInventory().getCoins();
-  coins.add(amount);
-  ctx.replySuccess("Added " + amount + " coins to " + targetName);
-});
+  @Override
+  protected CompletableFuture<Void> execute(CommandContext context) {
+    PlayerRef target = targetArg.get(context);
+    int amount = amountArg.get(context);
+
+    // TODO: apply coins via your inventory/economy module.
+    context.sendMessage(Message.raw("Queued " + amount + " coins for " + target));
+    return CompletableFuture.completedFuture(null);
+  }
+}
 ```
 
 In-game:
@@ -58,22 +94,36 @@ In-game:
 Goal: add `/tpto <player>` requiring `mymod.tpto`.
 
 ```java
-server.getCommands().register("tpto", (ctx) -> {
-  if (!ctx.hasPermission("mymod.tpto")) {
-    ctx.replyError("No permission.");
-    return;
+import com.hypixel.hytale.server.core.Message;
+import com.hypixel.hytale.server.core.command.system.AbstractCommand;
+import com.hypixel.hytale.server.core.command.system.CommandContext;
+import com.hypixel.hytale.server.core.command.system.arguments.system.RequiredArg;
+import com.hypixel.hytale.server.core.command.system.arguments.types.ArgTypes;
+import com.hypixel.hytale.server.core.universe.PlayerRef;
+import java.util.concurrent.CompletableFuture;
+
+public final class TpToCommand extends AbstractCommand {
+  private final RequiredArg<PlayerRef> targetArg;
+
+  public TpToCommand() {
+    super("tpto", "Teleport to a player");
+    requirePermission("mymod.tpto");
+    targetArg = withRequiredArg("target", "Target player", ArgTypes.PLAYER_REF);
   }
 
-  Player sender = ctx.getPlayer();
-  Player target = server.getPlayerByName(ctx.arg(0));
-  if (target == null) {
-    ctx.replyError("Player not found.");
-    return;
-  }
+  @Override
+  protected CompletableFuture<Void> execute(CommandContext context) {
+    if (!context.isPlayer()) {
+      context.sendMessage(Message.raw("Player-only command."));
+      return CompletableFuture.completedFuture(null);
+    }
 
-  sender.teleport(target.getLocation());
-  ctx.replySuccess("Teleported to " + target.getName());
-});
+    PlayerRef target = targetArg.get(context);
+    // TODO: teleport the sender to the target via your world/teleport module.
+    context.sendMessage(Message.raw("Teleporting to " + target));
+    return CompletableFuture.completedFuture(null);
+  }
+}
 ```
 
 In-game:
@@ -94,18 +144,24 @@ Config (example `config.json`):
 }
 ```
 
-Pseudo-code:
-
 ```java
-public final class MyMod {
-  private String motd;
+import com.hypixel.hytale.server.core.Message;
+import com.hypixel.hytale.server.core.command.system.AbstractCommand;
+import com.hypixel.hytale.server.core.command.system.CommandContext;
+import java.util.concurrent.CompletableFuture;
 
-  public void onEnable(Server server) {
-    this.motd = loadConfig("config.json").getString("motd");
+public final class MotdCommand extends AbstractCommand {
+  private final String motd;
 
-    server.getCommands().register("motd", (ctx) -> {
-      ctx.replyInfo(motd);
-    });
+  public MotdCommand(String motd) {
+    super("motd", "Show the message of the day");
+    this.motd = motd;
+  }
+
+  @Override
+  protected CompletableFuture<Void> execute(CommandContext context) {
+    context.sendMessage(Message.raw(motd));
+    return CompletableFuture.completedFuture(null);
   }
 }
 ```
@@ -121,33 +177,56 @@ In-game:
 Goal: announce when a player joins.
 
 ```java
-server.getEvents().onPlayerJoin((event) -> {
-  Player p = event.getPlayer();
-  server.broadcast(p.getName() + " joined the server.");
+import com.hypixel.hytale.event.EventRegistry;
+import com.hypixel.hytale.server.core.Message;
+import com.hypixel.hytale.server.core.entity.entities.Player;
+import com.hypixel.hytale.server.core.event.events.player.PlayerConnectEvent;
+
+EventRegistry events = ...; // From your plugin base, for example getEventRegistry().
+events.registerGlobal(PlayerConnectEvent.class, event -> {
+  Player player = event.getPlayer();
+  player.sendMessage(Message.raw("Welcome " + player.getDisplayName()));
 });
 ```
 
 ## Example 6: Cooldown command
 
-Goal: add `/roll` with a 10 second cooldown per player.
+Goal: add `/roll` with a 10 second cooldown per sender.
 
 ```java
-Map<UUID, Long> lastRoll = new HashMap<>();
+import com.hypixel.hytale.server.core.Message;
+import com.hypixel.hytale.server.core.command.system.AbstractCommand;
+import com.hypixel.hytale.server.core.command.system.CommandContext;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 
-server.getCommands().register("roll", (ctx) -> {
-  Player p = ctx.getPlayer();
-  long now = System.currentTimeMillis();
-  long last = lastRoll.getOrDefault(p.getUuid(), 0L);
+public final class RollCommand extends AbstractCommand {
+  private final Map<UUID, Long> lastRoll = new HashMap<>();
 
-  if (now - last < 10_000) {
-    ctx.replyError("Cooldown: try again in " + ((10_000 - (now - last)) / 1000) + "s");
-    return;
+  public RollCommand() {
+    super("roll", "Roll a random number");
   }
 
-  int roll = 1 + (int)(Math.random() * 100);
-  lastRoll.put(p.getUuid(), now);
-  ctx.replySuccess("You rolled " + roll);
-});
+  @Override
+  protected CompletableFuture<Void> execute(CommandContext context) {
+    UUID senderId = context.sender().getUuid();
+    long now = System.currentTimeMillis();
+    long last = lastRoll.getOrDefault(senderId, 0L);
+
+    if (now - last < 10_000) {
+      long waitMs = 10_000 - (now - last);
+      context.sendMessage(Message.raw("Cooldown: try again in " + (waitMs / 1000) + "s"));
+      return CompletableFuture.completedFuture(null);
+    }
+
+    int roll = 1 + (int) (Math.random() * 100);
+    lastRoll.put(senderId, now);
+    context.sendMessage(Message.raw("You rolled " + roll));
+    return CompletableFuture.completedFuture(null);
+  }
+}
 ```
 
 In-game:
@@ -161,19 +240,39 @@ In-game:
 Goal: add `/mymod reload` to reload config at runtime.
 
 ```java
-server.getCommands().register("mymod", (ctx) -> {
-  String sub = ctx.arg(0);
+import com.hypixel.hytale.server.core.Message;
+import com.hypixel.hytale.server.core.command.system.AbstractCommand;
+import com.hypixel.hytale.server.core.command.system.CommandContext;
+import com.hypixel.hytale.server.core.command.system.arguments.system.RequiredArg;
+import com.hypixel.hytale.server.core.command.system.arguments.types.ArgTypes;
+import java.util.concurrent.CompletableFuture;
 
-  if ("reload".equals(sub)) {
-    if (!ctx.hasPermission("mymod.admin")) {
-      ctx.replyError("No permission.");
-      return;
+public final class MyModCommand extends AbstractCommand {
+  private final RequiredArg<String> actionArg;
+
+  public MyModCommand() {
+    super("mymod", "Admin commands for MyMod");
+    actionArg = withRequiredArg("action", "Action", ArgTypes.STRING);
+  }
+
+  @Override
+  protected CompletableFuture<Void> execute(CommandContext context) {
+    String action = actionArg.get(context);
+    if (!"reload".equalsIgnoreCase(action)) {
+      context.sendMessage(Message.raw("Usage: /mymod reload"));
+      return CompletableFuture.completedFuture(null);
     }
 
-    reloadConfig();
-    ctx.replySuccess("Reloaded config.");
+    if (!context.sender().hasPermission("mymod.admin")) {
+      context.sendMessage(Message.raw("No permission."));
+      return CompletableFuture.completedFuture(null);
+    }
+
+    // TODO: reload your config.
+    context.sendMessage(Message.raw("Reloaded config."));
+    return CompletableFuture.completedFuture(null);
   }
-});
+}
 ```
 
 In-game:
@@ -182,8 +281,147 @@ In-game:
 /mymod reload
 ```
 
+## Example 8: Multi-level command with subcommands (JAR-style)
+
+Goal: add `/bw setup addteam red` with subcommand routing.
+
+Registered-arg approach (subcommand owns its args):
+
+```java
+import com.hypixel.hytale.server.core.command.system.AbstractCommand;
+import com.hypixel.hytale.server.core.command.system.CommandContext;
+import com.hypixel.hytale.server.core.command.system.arguments.system.OptionalArg;
+import com.hypixel.hytale.server.core.command.system.arguments.system.RequiredArg;
+import com.hypixel.hytale.server.core.command.system.arguments.types.ArgTypes;
+import java.util.concurrent.CompletableFuture;
+
+public final class BwCommand extends AbstractCommand {
+  public BwCommand() {
+    super("bw", "BedWars");
+    addSubCommand(new SetupCommand());
+  }
+}
+
+private static final class SetupCommand extends AbstractCommand {
+  private final RequiredArg<String> actionArg;
+  private final OptionalArg<String> teamArg;
+
+  private SetupCommand() {
+    super("setup", "Arena setup");
+    actionArg = withRequiredArg("action", "Action", ArgTypes.STRING);
+    teamArg = withOptionalArg("team", "Team id", ArgTypes.STRING);
+  }
+
+  @Override
+  protected CompletableFuture<Void> execute(CommandContext context) {
+    String action = actionArg.get(context);
+    String team = teamArg.provided(context) ? teamArg.get(context) : "";
+    // Dispatch to your setup handler.
+    return CompletableFuture.completedFuture(null);
+  }
+}
+```
+
+Manual-parse fallback when you need nested routing under `setup`:
+
+```java
+import com.hypixel.hytale.server.core.command.system.AbstractCommand;
+import com.hypixel.hytale.server.core.command.system.CommandContext;
+import java.util.concurrent.CompletableFuture;
+
+private static final class SetupCommand extends AbstractCommand {
+  private SetupCommand() {
+    super("setup", "Arena setup");
+    setAllowsExtraArguments(true);
+  }
+
+  @Override
+  protected CompletableFuture<Void> execute(CommandContext context) {
+    String[] args = argsAfter(context, 1); // Skip the "setup" token; adjust if needed.
+    // Parse args and dispatch (for example, "addteam red").
+    return CompletableFuture.completedFuture(null);
+  }
+}
+```
+
+## Helper: parse extra args safely
+
+If you need to read `CommandContext.getInputString()` and handle quoted args,
+use a small tokenizer. Skip the called command token; for nested routes, skip
+any parent tokens included in the input string.
+
+```java
+import com.hypixel.hytale.server.core.command.system.CommandContext;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+
+static String[] argsAfter(CommandContext context, int skipTokens) {
+  List<String> tokens = tokenizeInput(context.getInputString());
+  if (tokens.size() <= skipTokens) {
+    return new String[0];
+  }
+  return Arrays.copyOfRange(tokens.toArray(new String[0]), skipTokens, tokens.size());
+}
+
+static List<String> tokenizeInput(String input) {
+  List<String> out = new ArrayList<>();
+  StringBuilder cur = new StringBuilder();
+  boolean inQuotes = false;
+  char quote = 0;
+  boolean escape = false;
+
+  for (int i = 0; i < input.length(); i++) {
+    char c = input.charAt(i);
+
+    if (escape) {
+      cur.append(c);
+      escape = false;
+      continue;
+    }
+
+    if (c == '\\') {
+      escape = true;
+      continue;
+    }
+
+    if (inQuotes) {
+      if (c == quote) {
+        inQuotes = false;
+      } else {
+        cur.append(c);
+      }
+      continue;
+    }
+
+    if (c == '"' || c == '\'') {
+      inQuotes = true;
+      quote = c;
+      continue;
+    }
+
+    if (Character.isWhitespace(c)) {
+      if (cur.length() > 0) {
+        out.add(cur.toString());
+        cur.setLength(0);
+      }
+      continue;
+    }
+
+    cur.append(c);
+  }
+
+  if (cur.length() > 0) {
+    out.add(cur.toString());
+  }
+
+  return out;
+}
+```
+
 ## Notes
 
-- Command parsing helpers (`ctx.arg`, `ctx.replyInfo`, etc.) are placeholders.
+- Command helpers here are JAR-based (`AbstractCommand`, `CommandContext`,
+  `ArgTypes`), but other modules are placeholders.
 - Replace types like `Server`, `Player`, and `Event` with actual SDK classes.
 - Use `/help` or `/commands` in-game to confirm actual command registration.

@@ -173,7 +173,7 @@ NONE -> SETUP -> START -> ENABLED -> SHUTDOWN
 
 ```java
 // Register in setup()
-getEventRegistry().register(PlayerConnectEvent.class, event -> {
+getEventRegistry().registerGlobal(PlayerConnectEvent.class, event -> {
     getLogger().info("Player joined: " + event.getPlayer().getName());
 });
 ```
@@ -182,6 +182,9 @@ Common events:
 - `PlayerConnectEvent`, `PlayerDisconnectEvent`, `PlayerChatEvent`
 - `BreakBlockEvent`, `PlaceBlockEvent`, `UseBlockEvent`
 - `BootEvent`, `ShutdownEvent`
+
+Note: ECS events like `BreakBlockEvent`, `PlaceBlockEvent`, and `UseBlockEvent` are
+handled by `EntityEventSystem` instances registered via `getEntityStoreRegistry()`.
 
 ### Command System
 

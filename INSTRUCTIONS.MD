@@ -32,6 +32,9 @@ This repo documents and dissects Hytale server and modding data. Follow these in
 - Add file/path anchors for inferred guidance.
 - Avoid copying content verbatim from mods; summarize patterns.
 - Keep scratch artifacts local for evidence but do not treat them as published docs.
+- Event docs: use `registerGlobal(...)` for player events and
+  `EntityEventSystem` registered via `getEntityStoreRegistry().registerSystem(...)`
+  for ECS events. Do not show ECS events registered via `EventRegistry`.
 
 ## Safety and Style
 - Use ASCII only.

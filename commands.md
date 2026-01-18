@@ -17,6 +17,21 @@ This server exposes commands through the console and (for players with permissio
 - If an argument contains spaces, try quoting it with `"` or `'` (server implementations vary).
 - If a command fails, check the server console log for the error message.
 
+## Argument registration and parser behavior (JAR)
+
+These notes reflect the JAR command system (`com.hypixel.hytale.server.core.command.system.*`).
+
+- Register arguments via `AbstractCommand.withRequiredArg(...)`, `withOptionalArg(...)`,
+  `withDefaultArg(...)`, or related helpers. Creating `new RequiredArg(...)` or
+  `new OptionalArg(...)` without registration can leave the parser thinking the
+  command expects zero arguments.
+- If a subcommand must accept extra tokens (for example, `/bw setup addteam red`),
+  call `AbstractCommand.setAllowsExtraArguments(true)` on the subcommand and parse
+  `CommandContext.getInputString()` manually.
+- Use `CommandContext.isPlayer()` and `CommandContext.senderAsPlayerRef()` (or
+  `senderAs(...)`) when you need a player sender. `CommandSender` itself is not a
+  player object.
+
 ## Finding available commands
 
 Because Hytale is built for modding, the command list depends on the core server version and any installed mods.

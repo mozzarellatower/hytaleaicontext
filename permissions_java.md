@@ -1,6 +1,8 @@
 # Setting permissions in Java (modding guide)
 
-This is a generic Java modding guide for permission checks and registration. Replace the API calls with the ones from your Hytale SDK version.
+This is a generic Java modding guide for permission checks and registration. The
+snippets use the JAR command system where possible; replace APIs with the ones
+from your Hytale SDK version.
 
 ## 1) Define permission keys
 
@@ -26,17 +28,34 @@ If the SDK does not support registration, just use the keys consistently and doc
 
 ## 3) Gate commands with permissions
 
-Check permission keys in your command handlers:
+Check permission keys in your command handlers (JAR-style):
 
 ```java
-server.getCommands().register("mymod", (ctx) -> {
-  if (!ctx.hasPermission("mymod.use")) {
-    ctx.replyError("No permission.");
-    return;
+import com.hypixel.hytale.server.core.Message;
+import com.hypixel.hytale.server.core.command.system.AbstractCommand;
+import com.hypixel.hytale.server.core.command.system.CommandContext;
+import com.hypixel.hytale.server.core.command.system.CommandRegistry;
+import java.util.concurrent.CompletableFuture;
+
+CommandRegistry registry = ...;
+registry.registerCommand(new MyModCommand());
+
+public final class MyModCommand extends AbstractCommand {
+  public MyModCommand() {
+    super("mymod", "MyMod root command");
   }
 
-  // Command logic...
-});
+  @Override
+  protected CompletableFuture<Void> execute(CommandContext context) {
+    if (!context.sender().hasPermission("mymod.use")) {
+      context.sendMessage(Message.raw("No permission."));
+      return CompletableFuture.completedFuture(null);
+    }
+
+    // Command logic...
+    return CompletableFuture.completedFuture(null);
+  }
+}
 ```
 
 ## 4) Gate events and features
@@ -95,7 +114,7 @@ Add a short section to your mod README listing permission keys and what they do.
 
 ## 7) Common mistakes
 
-- Checking permissions only client‑side instead of server‑side.
+- Checking permissions only client-side instead of server-side.
 - Using inconsistent keys across commands and features.
 - Forgetting to update `permissions.json` and restart.
 

@@ -324,7 +324,7 @@ public void setup() {
     getCommandRegistry().registerCommand(new MyCommand());
 
     // Register events
-    getEventRegistry().register(PlayerConnectEvent.class, this::onPlayerConnect);
+    getEventRegistry().registerGlobal(PlayerConnectEvent.class, this::onPlayerConnect);
 
     getLogger().info("Setup complete");
 }
@@ -374,7 +374,7 @@ The event system allows plugins to respond to server events.
 
 ```java
 // In setup()
-getEventRegistry().register(PlayerConnectEvent.class, this::onPlayerConnect);
+getEventRegistry().registerGlobal(PlayerConnectEvent.class, this::onPlayerConnect);
 
 // Handler method
 private void onPlayerConnect(PlayerConnectEvent event) {
@@ -385,7 +385,7 @@ private void onPlayerConnect(PlayerConnectEvent event) {
 ### With Lambda
 
 ```java
-getEventRegistry().register(PlayerChatEvent.class, event -> {
+getEventRegistry().registerGlobal(PlayerChatEvent.class, event -> {
     String message = event.getMessage();
     getLogger().info("Chat: " + message);
 });
@@ -407,8 +407,8 @@ Priority levels (in order of execution):
 import com.hypixel.hytale.event.EventPriority;
 
 // Register with priority
-getEventRegistry().register(EventPriority.EARLY, PlayerConnectEvent.class, this::onConnect);
-getEventRegistry().register(EventPriority.LAST, PlayerConnectEvent.class, this::onConnectLast);
+getEventRegistry().registerGlobal(EventPriority.EARLY, PlayerConnectEvent.class, this::onConnect);
+getEventRegistry().registerGlobal(EventPriority.LAST, PlayerConnectEvent.class, this::onConnectLast);
 ```
 
 ### Async Events
@@ -427,7 +427,7 @@ getEventRegistry().registerAsync(SomeAsyncEvent.class, future -> {
 ### Unregistering Events
 
 ```java
-EventRegistration registration = getEventRegistry().register(
+EventRegistration registration = getEventRegistry().registerGlobal(
     PlayerConnectEvent.class, this::onConnect
 );
 
@@ -453,6 +453,59 @@ getEntityStoreRegistry().registerSystem(new ExampleCancelCraft());
 ```
 
 `EntityEventSystem` exists in `com.hypixel.hytale.component.system`.
+
+### ECS Event System Template (JAR)
+
+Use ECS systems for block/crafting events like `BreakBlockEvent`,
+`PlaceBlockEvent`, `UseBlockEvent.Pre`, and `CraftRecipeEvent.Pre`.
+
+```java
+import com.hypixel.hytale.component.Archetype;
+import com.hypixel.hytale.component.ArchetypeChunk;
+import com.hypixel.hytale.component.CommandBuffer;
+import com.hypixel.hytale.component.Store;
+import com.hypixel.hytale.component.query.Query;
+import com.hypixel.hytale.component.system.EntityEventSystem;
+import com.hypixel.hytale.server.core.asset.type.item.config.CraftingRecipe;
+import com.hypixel.hytale.server.core.event.events.ecs.CraftRecipeEvent;
+import com.hypixel.hytale.server.core.universe.world.storage.EntityStore;
+
+public final class CancelRecipeSystem
+    extends EntityEventSystem<EntityStore, CraftRecipeEvent.Pre> {
+
+    public CancelRecipeSystem() {
+        super(CraftRecipeEvent.Pre.class);
+    }
+
+    @Override
+    public void handle(int index,
+                       ArchetypeChunk<EntityStore> archetypeChunk,
+                       Store<EntityStore> store,
+                       CommandBuffer<EntityStore> commandBuffer,
+                       CraftRecipeEvent.Pre event) {
+        CraftingRecipe recipe = event.getCraftedRecipe();
+        // TODO: inspect recipe input and cancel when needed.
+        if (shouldCancel(recipe)) {
+            event.setCancelled(true);
+        }
+    }
+
+    @Override
+    public Query<EntityStore> getQuery() {
+        return Archetype.empty();
+    }
+
+    private boolean shouldCancel(CraftingRecipe recipe) {
+        return false;
+    }
+}
+```
+
+Register in your plugin:
+
+```java
+getEntityStoreRegistry().registerSystem(new CancelRecipeSystem());
+```
 
 ### Common Events Reference
 
@@ -792,7 +845,9 @@ protected abstract CompletableFuture<Void> execute(CommandContext context);
 
 ### Arguments and Suggestions (JAR Example)
 
-This example uses the JAR argument system (`RequiredArg`, `OptionalArg`, `ArgTypes`) and the built-in suggestion API:
+This example uses the JAR argument system (`RequiredArg`, `OptionalArg`, `ArgTypes`) and the built-in suggestion API.
+Arguments must be registered on the command via `withRequiredArg(...)` / `withOptionalArg(...)` (or related helpers);
+constructing `RequiredArg` / `OptionalArg` directly does not register them with the parser.
 
 ```java
 import com.hypixel.hytale.server.core.Message;
@@ -806,17 +861,16 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
 public final class WarnCommand extends AbstractCommand {
-    private final RequiredArg<String> targetArg =
-        new RequiredArg<>(this, "target", "Target name", ArgTypes.STRING)
-            .suggest((sender, input, argIndex, result) -> {
-                result.fuzzySuggest(input, List.of("Alice", "Bob"), s -> s);
-            });
-
-    private final OptionalArg<String> reasonArg =
-        new OptionalArg<>(this, "reason", "Reason", ArgTypes.STRING);
+    private final RequiredArg<String> targetArg;
+    private final OptionalArg<String> reasonArg;
 
     public WarnCommand() {
         super("warn", "Warn a player");
+        targetArg = withRequiredArg("target", "Target name", ArgTypes.STRING)
+            .suggest((sender, input, argIndex, result) -> {
+                result.fuzzySuggest(input, List.of("Alice", "Bob"), s -> s);
+            });
+        reasonArg = withOptionalArg("reason", "Reason", ArgTypes.STRING);
     }
 
     @Override
@@ -833,6 +887,107 @@ public final class WarnCommand extends AbstractCommand {
     }
 }
 ```
+
+### Subcommands and extra arguments (JAR notes)
+
+- Subcommand arguments must be registered on the subcommand itself (for example,
+  `withRequiredArg(...)` inside the subcommand constructor).
+- If a subcommand needs to accept extra tokens for manual routing, call
+  `setAllowsExtraArguments(true)` and parse `CommandContext.getInputString()`.
+
+Pattern example (non-verbatim):
+
+```java
+public final class BwCommand extends AbstractCommand {
+    public BwCommand() {
+        super("bw", "BedWars root");
+        addSubCommand(new SetupCommand());
+    }
+}
+
+private static final class SetupCommand extends AbstractCommand {
+    private SetupCommand() {
+        super("setup", "Arena setup");
+        setAllowsExtraArguments(true);
+    }
+
+    @Override
+    protected CompletableFuture<Void> execute(CommandContext context) {
+        String input = context.getInputString();
+        // Parse tokens after "setup" and dispatch to your handler.
+        return CompletableFuture.completedFuture(null);
+    }
+}
+```
+
+Helper for manual parsing (handles quoted args):
+
+```java
+private static String[] argsAfter(CommandContext context, int skipTokens) {
+    List<String> tokens = tokenizeInput(context.getInputString());
+    if (tokens.size() <= skipTokens) {
+        return new String[0];
+    }
+    return tokens.subList(skipTokens, tokens.size()).toArray(new String[0]);
+}
+
+private static List<String> tokenizeInput(String input) {
+    List<String> out = new ArrayList<>();
+    StringBuilder cur = new StringBuilder();
+    boolean inQuotes = false;
+    char quote = 0;
+    boolean escape = false;
+
+    for (int i = 0; i < input.length(); i++) {
+        char c = input.charAt(i);
+
+        if (escape) {
+            cur.append(c);
+            escape = false;
+            continue;
+        }
+
+        if (c == '\\') {
+            escape = true;
+            continue;
+        }
+
+        if (inQuotes) {
+            if (c == quote) {
+                inQuotes = false;
+            } else {
+                cur.append(c);
+            }
+            continue;
+        }
+
+        if (c == '"' || c == '\'') {
+            inQuotes = true;
+            quote = c;
+            continue;
+        }
+
+        if (Character.isWhitespace(c)) {
+            if (cur.length() > 0) {
+                out.add(cur.toString());
+                cur.setLength(0);
+            }
+            continue;
+        }
+
+        cur.append(c);
+    }
+
+    if (cur.length() > 0) {
+        out.add(cur.toString());
+    }
+
+    return out;
+}
+```
+
+Sender resolution: prefer `CommandContext.isPlayer()` and `CommandContext.senderAsPlayerRef()`
+when you need a player sender instead of casting `CommandSender`.
 
 ### Registering Commands
 
@@ -1151,8 +1306,8 @@ public final class WelcomePlugin extends JavaPlugin {
 
     @Override
     public void setup() {
-        getEventRegistry().register(PlayerConnectEvent.class, this::onConnect);
-        getEventRegistry().register(PlayerDisconnectEvent.class, this::onDisconnect);
+        getEventRegistry().registerGlobal(PlayerConnectEvent.class, this::onConnect);
+        getEventRegistry().registerGlobal(PlayerDisconnectEvent.class, this::onDisconnect);
         getLogger().info("WelcomePlugin setup complete");
     }
 
@@ -1198,10 +1353,17 @@ Logs block breaks and placements:
 ```java
 package com.example.blocklogger;
 
+import com.hypixel.hytale.component.Archetype;
+import com.hypixel.hytale.component.ArchetypeChunk;
+import com.hypixel.hytale.component.CommandBuffer;
+import com.hypixel.hytale.component.Store;
+import com.hypixel.hytale.component.query.Query;
+import com.hypixel.hytale.component.system.EntityEventSystem;
 import com.hypixel.hytale.server.core.plugin.JavaPlugin;
 import com.hypixel.hytale.server.core.plugin.JavaPluginInit;
 import com.hypixel.hytale.server.core.event.events.ecs.BreakBlockEvent;
 import com.hypixel.hytale.server.core.event.events.ecs.PlaceBlockEvent;
+import com.hypixel.hytale.server.core.universe.world.storage.EntityStore;
 import javax.annotation.Nonnull;
 
 public final class BlockLoggerPlugin extends JavaPlugin {
@@ -1212,8 +1374,8 @@ public final class BlockLoggerPlugin extends JavaPlugin {
 
     @Override
     public void setup() {
-        getEventRegistry().register(BreakBlockEvent.class, this::onBreak);
-        getEventRegistry().register(PlaceBlockEvent.class, this::onPlace);
+        getEntityStoreRegistry().registerSystem(new BreakBlockLogger());
+        getEntityStoreRegistry().registerSystem(new PlaceBlockLogger());
     }
 
     @Override
@@ -1226,12 +1388,44 @@ public final class BlockLoggerPlugin extends JavaPlugin {
         getLogger().info("BlockLogger stopped");
     }
 
-    private void onBreak(BreakBlockEvent event) {
-        getLogger().info("Block broken at " + event.getPosition());
+    private final class BreakBlockLogger extends EntityEventSystem<EntityStore, BreakBlockEvent> {
+        private BreakBlockLogger() {
+            super(BreakBlockEvent.class);
+        }
+
+        @Override
+        public void handle(int index,
+                           ArchetypeChunk<EntityStore> archetypeChunk,
+                           Store<EntityStore> store,
+                           CommandBuffer<EntityStore> commandBuffer,
+                           BreakBlockEvent event) {
+            getLogger().info("Block broken at " + event.getTargetBlock());
+        }
+
+        @Override
+        public Query<EntityStore> getQuery() {
+            return Archetype.empty();
+        }
     }
 
-    private void onPlace(PlaceBlockEvent event) {
-        getLogger().info("Block placed at " + event.getPosition());
+    private final class PlaceBlockLogger extends EntityEventSystem<EntityStore, PlaceBlockEvent> {
+        private PlaceBlockLogger() {
+            super(PlaceBlockEvent.class);
+        }
+
+        @Override
+        public void handle(int index,
+                           ArchetypeChunk<EntityStore> archetypeChunk,
+                           Store<EntityStore> store,
+                           CommandBuffer<EntityStore> commandBuffer,
+                           PlaceBlockEvent event) {
+            getLogger().info("Block placed at " + event.getTargetBlock());
+        }
+
+        @Override
+        public Query<EntityStore> getQuery() {
+            return Archetype.empty();
+        }
     }
 }
 ```
