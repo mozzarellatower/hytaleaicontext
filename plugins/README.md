@@ -19,6 +19,10 @@ This folder contains documentation for developing Hytale server plugins.
 - Lifecycle Methods (setup, start, shutdown)
 - Event System
 - Command System
+- Packet Adapters
+- Inventory and ItemStack
+- Custom UI
+- Server Transfer (ClientReferral)
 - Configuration
 - Registries
 - Dependencies
@@ -57,6 +61,8 @@ External example projects are referenced in `plugins/HytaleServer-Plugin-Example
 ### Onboarding
 - Buildable starter template: `plugins/Plugin-Starter.md`
 - Verified use-case ideas: `plugins/HytaleServer-Plugin-Examples.md` (Use-Case Ideas section)
+- Packet, inventory, UI, and transfer examples: `plugins/HytaleServer-Plugin-Examples.md`
+- Command transfer example: `commandexamples.md` (ClientReferral)
 
 ## See Also
 

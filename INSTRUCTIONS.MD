@@ -35,6 +35,9 @@ This repo documents and dissects Hytale server and modding data. Follow these in
 - Event docs: use `registerGlobal(...)` for player events and
   `EntityEventSystem` registered via `getEntityStoreRegistry().registerSystem(...)`
   for ECS events. Do not show ECS events registered via `EventRegistry`.
+- Server transfer docs: use `PlayerRef.referToServer(...)` (sends
+  `ClientReferral` with `HostAddress`) and point to `PlayerSetupConnectEvent`
+  for incoming referral data.
 
 ## Safety and Style
 - Use ASCII only.

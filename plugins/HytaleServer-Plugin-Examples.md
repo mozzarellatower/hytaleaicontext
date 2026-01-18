@@ -177,6 +177,18 @@ Each idea references concrete systems and class names seen in decompiled mods.
   - Item-specific settings panels (music selection, cosmetic toggles).
   - Simple admin dashboards (list players, toggle flags, view stats).
   - Mini-game selection or matchmaking screens.
+- Server transfer (`PlayerRef.referToServer`, `PlayerSetupConnectEvent`)
+  - Lobby handoff after match end or shard selection.
+  - Pre-login redirect based on referral data tags.
+  - Region-based routing by auth or hostname.
+- Packet adapters (`PacketAdapters`, `PacketFilter`, `PlayerPacketFilter`)
+  - Packet volume metrics by handler or per player for profiling spikes.
+  - Simple rate-limit blocks for selected packet classes during minigames.
+  - Temporary packet suppression during server transitions or UI flows.
+- Inventory tools (`Inventory`, `ItemContainer`, `ItemStack`)
+  - Starter kits on `PlayerReadyEvent` or `PlayerConnectEvent`.
+  - Auto-sort/quick-stack or item cleanup commands.
+  - Denylist cleanup for invalid or banned item IDs.
 - Tickable block states (`ItemGeneratorState`, `ConveyorState`)
   - Conveyor belts or moving platforms that push entities/items.
   - Timed item generators or resource nodes with cooldowns.
@@ -285,6 +297,220 @@ public void teleportPlayer(Ref<EntityStore> ref, World world, Vector3d pos, Vect
     ref.getStore().addComponent(ref, Teleport.getComponentType(),
         new Teleport(world, pos, rot));
 }
+```
+
+For `packet-logging` (PacketAdapters watch + filter):
+
+```java
+import com.hypixel.hytale.protocol.Packet;
+import com.hypixel.hytale.server.core.io.PacketHandler;
+import com.hypixel.hytale.server.core.io.adapter.PacketAdapters;
+import com.hypixel.hytale.server.core.io.adapter.PacketFilter;
+
+PacketAdapters.registerOutbound((PacketHandler handler, Packet packet) -> {
+    getLogger().info("Sent: " + packet.getClass().getSimpleName());
+});
+
+PacketFilter inbound = PacketAdapters.registerInbound((PacketHandler handler, Packet packet) -> {
+    if (packet.getClass().getSimpleName().contains("Chat")) {
+        return true; // consume and block default handling
+    }
+    return false;
+});
+```
+
+For `inventory-kit` (starter items):
+
+```java
+import com.hypixel.hytale.server.core.inventory.Inventory;
+import com.hypixel.hytale.server.core.inventory.ItemStack;
+import com.hypixel.hytale.server.core.inventory.container.ItemContainer;
+
+public void giveStarterKit(Player player) {
+    Inventory inventory = player.getInventory();
+    ItemContainer storage = inventory.getStorage();
+    storage.addItemStack(new ItemStack("Stone", 64));
+    storage.addItemStack(new ItemStack("Torch", 16));
+}
+```
+
+For `inventory-cleanup` (denylist scan):
+
+```java
+import com.hypixel.hytale.server.core.inventory.Inventory;
+import com.hypixel.hytale.server.core.inventory.ItemStack;
+import com.hypixel.hytale.server.core.inventory.container.ItemContainer;
+import java.util.Set;
+
+private static final Set<String> DENYLIST = Set.of("Debug_Wand", "Dev_Block");
+
+public void purgeDenylisted(Player player) {
+    Inventory inventory = player.getInventory();
+    ItemContainer storage = inventory.getStorage();
+    storage.forEach((short slot, ItemStack stack) -> {
+        if (stack != null && DENYLIST.contains(stack.getItemId())) {
+            storage.removeItemStackFromSlot(slot);
+        }
+    });
+}
+```
+
+For `inventory-sort` (storage auto-sort):
+
+```java
+import com.hypixel.hytale.server.core.inventory.Inventory;
+import com.hypixel.hytale.server.core.inventory.container.SortType;
+
+public void sortStorage(Player player) {
+    Inventory inventory = player.getInventory();
+    inventory.sortStorage(SortType.NAME);
+}
+```
+
+For `packet-rate-limit` (player packet filter):
+
+```java
+import com.hypixel.hytale.protocol.Packet;
+import com.hypixel.hytale.protocol.packets.interface_.ChatMessage;
+import com.hypixel.hytale.server.core.io.adapter.PacketAdapters;
+import com.hypixel.hytale.server.core.io.adapter.PacketFilter;
+import com.hypixel.hytale.server.core.io.adapter.PlayerPacketFilter;
+import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+
+Map<UUID, Long> lastChat = new ConcurrentHashMap<>();
+
+PlayerPacketFilter playerLimiter = (playerRef, packet) -> {
+    if (!(packet instanceof ChatMessage)) {
+        return false;
+    }
+    long now = System.currentTimeMillis();
+    long last = lastChat.getOrDefault(playerRef.getUuid(), 0L);
+    if (now - last < 500L) {
+        return true; // drop spam
+    }
+    lastChat.put(playerRef.getUuid(), now);
+    return false;
+};
+
+PacketFilter limiter = PacketAdapters.registerInbound(playerLimiter);
+```
+
+For `packet-metrics` (simple counters):
+
+```java
+import com.hypixel.hytale.protocol.Packet;
+import com.hypixel.hytale.server.core.io.PacketHandler;
+import com.hypixel.hytale.server.core.io.adapter.PacketAdapters;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
+
+Map<String, AtomicInteger> outboundCounts = new ConcurrentHashMap<>();
+
+PacketAdapters.registerOutbound((PacketHandler handler, Packet packet) -> {
+    outboundCounts
+        .computeIfAbsent(packet.getClass().getSimpleName(), name -> new AtomicInteger())
+        .incrementAndGet();
+});
+```
+
+For `custom-hud` (basic HUD attach + hide):
+
+```java
+import com.hypixel.hytale.protocol.packets.interface_.HudComponent;
+import com.hypixel.hytale.server.core.entity.entities.player.hud.CustomUIHud;
+import com.hypixel.hytale.server.core.entity.entities.player.hud.HudManager;
+import com.hypixel.hytale.server.core.universe.PlayerRef;
+import com.hypixel.hytale.server.core.ui.builder.UICommandBuilder;
+
+public final class MyHud extends CustomUIHud {
+    public MyHud(PlayerRef ref) {
+        super(ref);
+    }
+
+    @Override
+    protected void build(UICommandBuilder ui) {
+        ui.append("MyHUD.ui"); // external: Common/UI/Custom/MyHUD.ui
+    }
+}
+
+public void showHud(Player player) {
+    HudManager hud = player.getHudManager();
+    hud.setCustomHud(player.getPlayerRef(), new MyHud(player.getPlayerRef()));
+    hud.hideHudComponents(player.getPlayerRef(), HudComponent.Hotbar);
+}
+```
+
+For `custom-page` (interactive page skeleton):
+
+```java
+import com.hypixel.hytale.codec.builder.BuilderCodec;
+import com.hypixel.hytale.codec.Codec;
+import com.hypixel.hytale.codec.KeyedCodec;
+import com.hypixel.hytale.component.Ref;
+import com.hypixel.hytale.component.Store;
+import com.hypixel.hytale.server.core.entity.entities.player.pages.CustomPageLifetime;
+import com.hypixel.hytale.server.core.entity.entities.player.pages.InteractiveCustomUIPage;
+import com.hypixel.hytale.server.core.universe.PlayerRef;
+import com.hypixel.hytale.server.core.ui.builder.UICommandBuilder;
+import com.hypixel.hytale.server.core.ui.builder.UIEventBuilder;
+import com.hypixel.hytale.server.core.ui.builder.events.CustomUIEventBindingType;
+import com.hypixel.hytale.server.core.ui.builder.events.EventData;
+import com.hypixel.hytale.server.core.universe.world.storage.EntityStore;
+import javax.annotation.Nonnull;
+
+public final class MyPage extends InteractiveCustomUIPage<MyPage.Data> {
+    public static final class Data {
+        public static final BuilderCodec<Data> CODEC =
+            BuilderCodec.builder(Data.class, Data::new)
+                .append(new KeyedCodec<>("@MyInput", Codec.STRING),
+                    (data, value) -> data.value = value,
+                    data -> data.value).add()
+                .build();
+        private String value;
+    }
+
+    public MyPage(PlayerRef ref) {
+        super(ref, CustomPageLifetime.CanDismiss, Data.CODEC);
+    }
+
+    @Override
+    public void build(@Nonnull Ref<EntityStore> ref,
+                      @Nonnull UICommandBuilder ui,
+                      @Nonnull UIEventBuilder events,
+                      @Nonnull Store<EntityStore> store) {
+        ui.append("MyUI.ui");
+        events.addEventBinding(CustomUIEventBindingType.ValueChanged,
+            "#MyInput", EventData.of("@MyInput", "#MyInput.Value"), false);
+    }
+
+    @Override
+    public void handleDataEvent(@Nonnull Ref<EntityStore> ref,
+                                @Nonnull Store<EntityStore> store,
+                                Data data) {
+        sendUpdate();
+    }
+}
+```
+
+For `transfer-on-setup` (referral redirect):
+
+```java
+import com.hypixel.hytale.server.core.event.events.player.PlayerSetupConnectEvent;
+import java.nio.charset.StandardCharsets;
+
+getEventRegistry().registerGlobal(PlayerSetupConnectEvent.class, event -> {
+    byte[] data = event.getReferralData();
+    if (data == null) {
+        return;
+    }
+    String tag = new String(data, StandardCharsets.UTF_8);
+    if ("lobby-1".equals(tag)) {
+        event.referToServer("lobby.example.com", 25565);
+    }
+});
 ```
 
 ## Custom Commands

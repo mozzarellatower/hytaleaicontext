@@ -42,12 +42,28 @@ If you are an agent, start with:
 - Plugin examples: `plugins/HytaleServer-Plugin-Examples.md`
 - Plugin starter template: `plugins/Plugin-Starter.md`
 - Structures guide (prefabs): `plugins/Structures-Guide.md`
+- Transfer flow summary: `commandexamples.md` (ClientReferral example)
 
 Additional docs:
 - Commands overview: `commands.md`
 - Command examples: `commandexamples.md`
 - Command mod notes: `commandmod.md`
 - Permissions notes: `permissions_java.md`
+
+---
+
+## Transfer Flow (ClientReferral)
+
+Short onboarding summary:
+
+- Source server calls `PlayerRef.referToServer(host, port[, data])` to send a
+  `ClientReferral` packet (client reconnects to the new server).
+- Target server listens for `PlayerSetupConnectEvent`, reads
+  `getReferralData()`/`getReferralSource()`, and can redirect again via
+  `referToServer(...)` if needed.
+- Referral data is capped at 4096 bytes (use a small tag or shard ID).
+
+See `plugins/HytaleServer-Plugin-API.md` and `commandexamples.md` for code patterns.
 
 ---
 

@@ -344,6 +344,125 @@ private static final class SetupCommand extends AbstractCommand {
 }
 ```
 
+## Example 9: Transfer player to another server (ClientReferral)
+
+Goal: add `/transfer <host> <port> [data]` to send a client referral packet.
+Referral data is limited to 4096 bytes in the JAR.
+
+```java
+import com.hypixel.hytale.server.core.Message;
+import com.hypixel.hytale.server.core.command.system.AbstractCommand;
+import com.hypixel.hytale.server.core.command.system.CommandContext;
+import com.hypixel.hytale.server.core.command.system.arguments.system.OptionalArg;
+import com.hypixel.hytale.server.core.command.system.arguments.system.RequiredArg;
+import com.hypixel.hytale.server.core.command.system.arguments.types.ArgTypes;
+import com.hypixel.hytale.server.core.universe.PlayerRef;
+import com.hypixel.hytale.component.Ref;
+import com.hypixel.hytale.server.core.universe.world.storage.EntityStore;
+import java.nio.charset.StandardCharsets;
+import java.util.concurrent.CompletableFuture;
+
+public final class TransferCommand extends AbstractCommand {
+  private final RequiredArg<String> hostArg;
+  private final RequiredArg<Integer> portArg;
+  private final OptionalArg<String> dataArg;
+
+  public TransferCommand() {
+    super("transfer", "Send a player to another server");
+    hostArg = withRequiredArg("host", "Target host", ArgTypes.STRING);
+    portArg = withRequiredArg("port", "Target port", ArgTypes.INTEGER);
+    dataArg = withOptionalArg("data", "Referral data", ArgTypes.STRING);
+  }
+
+  @Override
+  protected CompletableFuture<Void> execute(CommandContext context) {
+    if (!context.isPlayer()) {
+      context.sendMessage(Message.raw("Player-only command."));
+      return CompletableFuture.completedFuture(null);
+    }
+
+    String host = hostArg.get(context);
+    int port = portArg.get(context);
+    byte[] data = dataArg.provided(context)
+        ? dataArg.get(context).getBytes(StandardCharsets.UTF_8)
+        : null;
+
+    Ref<EntityStore> ref = context.senderAsPlayerRef();
+    PlayerRef playerRef = ref.getStore().getComponent(ref, PlayerRef.getComponentType());
+    playerRef.referToServer(host, port, data);
+    return CompletableFuture.completedFuture(null);
+  }
+}
+```
+
+## Example 10: Transfer with referral data + receiving redirect
+
+Goal: send referral data from a command, then read and route on the target server
+using `PlayerSetupConnectEvent`.
+
+Source server command:
+
+```java
+import com.hypixel.hytale.server.core.command.system.AbstractCommand;
+import com.hypixel.hytale.server.core.command.system.CommandContext;
+import com.hypixel.hytale.server.core.command.system.arguments.system.OptionalArg;
+import com.hypixel.hytale.server.core.command.system.arguments.system.RequiredArg;
+import com.hypixel.hytale.server.core.command.system.arguments.types.ArgTypes;
+import com.hypixel.hytale.server.core.universe.PlayerRef;
+import com.hypixel.hytale.component.Ref;
+import com.hypixel.hytale.server.core.universe.world.storage.EntityStore;
+import java.nio.charset.StandardCharsets;
+import java.util.concurrent.CompletableFuture;
+
+public final class TransferLobbyCommand extends AbstractCommand {
+  private final RequiredArg<String> hostArg;
+  private final RequiredArg<Integer> portArg;
+  private final OptionalArg<String> tagArg;
+
+  public TransferLobbyCommand() {
+    super("transferlobby", "Send a player to a lobby shard");
+    hostArg = withRequiredArg("host", "Target host", ArgTypes.STRING);
+    portArg = withRequiredArg("port", "Target port", ArgTypes.INTEGER);
+    tagArg = withOptionalArg("tag", "Referral tag", ArgTypes.STRING);
+  }
+
+  @Override
+  protected CompletableFuture<Void> execute(CommandContext context) {
+    if (!context.isPlayer()) {
+      return CompletableFuture.completedFuture(null);
+    }
+    String host = hostArg.get(context);
+    int port = portArg.get(context);
+    byte[] data = tagArg.provided(context)
+        ? tagArg.get(context).getBytes(StandardCharsets.UTF_8)
+        : null;
+
+    Ref<EntityStore> ref = context.senderAsPlayerRef();
+    PlayerRef playerRef = ref.getStore().getComponent(ref, PlayerRef.getComponentType());
+    playerRef.referToServer(host, port, data);
+    return CompletableFuture.completedFuture(null);
+  }
+}
+```
+
+Receiving server redirect:
+
+```java
+import com.hypixel.hytale.server.core.event.events.player.PlayerSetupConnectEvent;
+import java.nio.charset.StandardCharsets;
+
+getEventRegistry().registerGlobal(PlayerSetupConnectEvent.class, event -> {
+  byte[] data = event.getReferralData();
+  if (data == null) {
+    return;
+  }
+  String tag = new String(data, StandardCharsets.UTF_8);
+  if ("lobby-1".equals(tag)) {
+    event.referToServer("lobby.example.com", 25565);
+  }
+});
+```
+
 ## Helper: parse extra args safely
 
 If you need to read `CommandContext.getInputString()` and handle quoted args,

@@ -736,6 +736,8 @@ Key APIs observed via `javap`:
 `PlayerRef` is a `Component<EntityStore>` and `IMessageReceiver` with player identity and
 movement helpers, including `getUuid()`, `getUsername()`, `getReference()`, `getTransform()`,
 `updatePosition(World, Transform, Vector3f)`, and `sendMessage(Message)`.
+It also exposes `referToServer(host, port[, data])`, which sends a
+`ClientReferral` transfer packet to the client (see "Server Transfer" below).
 
 ECS events are handled in systems derived from:
 
@@ -763,6 +765,124 @@ Decompiled component details (selected):
   - Constants: `DEFAULT_PICKUP_DELAY = 0.5`, `PICKUP_DELAY_DROPPED = 1.5`,
     `PICKUP_THROTTLE = 0.25`, `DEFAULT_MERGE_DELAY = 1.5`.
   - Helpers: `generateItemDrops(...)`, `generatePickedUpItem(...)`, `addToItemContainer(...)`.
+
+## Server Transfer (ClientReferral Packet)
+
+The JAR includes a built-in client referral/transfer packet:
+
+- `PlayerRef.referToServer(host, port[, data])` sends
+  `com.hypixel.hytale.protocol.packets.auth.ClientReferral` with a
+  `HostAddress` target and optional referral data.
+- This is a server-to-server handoff (client reconnect), not an in-world teleport.
+- Referral data is capped at 4096 bytes (see `PlayerRef.referToServer` in the JAR).
+- On the receiving server, `PlayerSetupConnectEvent` exposes
+  `getReferralData()` and `getReferralSource()` and can also call
+  `referToServer(...)` for pre-login redirects.
+
+Minimal usage (JAR):
+
+```java
+PlayerRef ref = player.getPlayerRef();
+ref.referToServer("example.com", 25565, "lobby-1".getBytes(StandardCharsets.UTF_8));
+```
+
+Receiving server redirect (JAR):
+
+```java
+import com.hypixel.hytale.server.core.event.events.player.PlayerSetupConnectEvent;
+import java.nio.charset.StandardCharsets;
+
+getEventRegistry().registerGlobal(PlayerSetupConnectEvent.class, event -> {
+    byte[] data = event.getReferralData();
+    if (data == null) {
+        return;
+    }
+    String tag = new String(data, StandardCharsets.UTF_8);
+    if ("lobby-1".equals(tag)) {
+        event.referToServer("lobby.example.com", 25565);
+    }
+});
+```
+
+## Packet Adapters (Inbound/Outbound)
+
+JAR classes:
+
+- `com.hypixel.hytale.server.core.io.adapter.PacketAdapters`
+- `com.hypixel.hytale.server.core.io.adapter.PacketWatcher` (`BiConsumer<PacketHandler, Packet>`)
+- `com.hypixel.hytale.server.core.io.adapter.PacketFilter` (`BiPredicate<PacketHandler, Packet>`)
+- `com.hypixel.hytale.server.core.io.adapter.PlayerPacketWatcher` (`BiConsumer<PlayerRef, Packet>`)
+- `com.hypixel.hytale.server.core.io.adapter.PlayerPacketFilter` (`BiPredicate<PlayerRef, Packet>`)
+- Netty bridge: `com.hypixel.hytale.server.core.io.netty.PlayerChannelHandler`
+
+Registration overloads (javap):
+
+- `registerInbound/Outbound(PacketWatcher)` and `registerInbound/Outbound(PacketFilter)`
+- `registerInbound/Outbound(PlayerPacketWatcher)` and `registerInbound/Outbound(PlayerPacketFilter)`
+- `deregisterInbound/Outbound(PacketFilter)`
+
+Behavior (javap):
+
+- Inbound: `PlayerChannelHandler` calls `PacketAdapters.__handleInbound(handler, packet)`;
+  if any filter returns `true`, default handling is skipped.
+- Outbound: `PacketHandler.writePacket(...)` and `write(...)` call
+  `PacketAdapters.__handleOutbound(...)`; a `true` return prevents send.
+- `PlayerPacketWatcher`/`PlayerPacketFilter` only fire when the handler is a
+  `GamePacketHandler` (PlayerRef is available there).
+
+Minimal filter usage (JAR):
+
+```java
+import com.hypixel.hytale.protocol.Packet;
+import com.hypixel.hytale.server.core.io.PacketHandler;
+import com.hypixel.hytale.server.core.io.adapter.PacketAdapters;
+import com.hypixel.hytale.server.core.io.adapter.PacketFilter;
+
+PacketFilter inbound = PacketAdapters.registerInbound((PacketHandler handler, Packet packet) -> {
+    if (packet instanceof SomePacket) {
+        return true; // consume and block default handling
+    }
+    return false;
+});
+
+// Later:
+PacketAdapters.deregisterInbound(inbound);
+```
+
+Watcher example (JAR):
+
+```java
+PacketAdapters.registerOutbound((PacketHandler handler, Packet packet) -> {
+    logger.info("Sent packet: " + packet.getClass().getSimpleName());
+});
+```
+
+Player-scoped filter example (JAR):
+
+```java
+import com.hypixel.hytale.protocol.packets.interface_.ChatMessage;
+import com.hypixel.hytale.server.core.io.adapter.PlayerPacketFilter;
+import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+
+Map<UUID, Long> lastChat = new ConcurrentHashMap<>();
+
+PlayerPacketFilter limiter = (playerRef, packet) -> {
+    if (!(packet instanceof ChatMessage)) {
+        return false;
+    }
+    long now = System.currentTimeMillis();
+    long last = lastChat.getOrDefault(playerRef.getUuid(), 0L);
+    if (now - last < 500L) {
+        return true; // drop spam
+    }
+    lastChat.put(playerRef.getUuid(), now);
+    return false;
+};
+
+PacketAdapters.registerInbound(limiter);
+```
 
 ## Command System
 
@@ -805,10 +925,88 @@ Observed in a sample admin UI mod (non-verbatim pattern):
 1. Define a tool item in `Server/Item/Items/...` with an `Interactions` map that points to an interaction ID.
 2. Map that interaction ID to a root interaction in `Server/Item/RootInteractions/...`.
 3. Define the interaction JSON in `Server/Item/Interactions/Item/...` with a `Type` that matches a plugin handler class.
-4. Provide UI layouts under `Common/UI/Custom/Pages/...` (`.ui` files) plus textures under `Common/UI/Custom/...`.
+4. Provide UI layouts under `Common/UI/Custom/...` (`.ui` files; often under `Pages/`) plus textures under `Common/UI/Custom/...`.
 5. In plugin code, handle the interaction to open the UI and register any related commands through `CommandRegistry` or `UICommandBuilder`.
 
 This is a practical wiring pattern: data files expose the item and interaction, while the plugin handles UI and behavior.
+
+### Custom UI (JAR + External Notes)
+
+JAR UI classes:
+
+- `CustomUIHud` (HUD overlays)
+- `CustomUIPage` and `InteractiveCustomUIPage<T>` (full-screen pages)
+- `UICommandBuilder` and `UIEventBuilder` (building UI command/event packets)
+- `CustomPageLifetime` (page close behavior: `CantClose`, `CanDismiss`,
+  `CanDismissOrCloseThroughInteraction`)
+- `HudManager` and `PageManager` (show/hide UI)
+
+External doc highlights (mark as external/unverified):
+
+- `.ui` files should live under `resources/Common/UI/Custom/...`.
+- `manifest.json` should set `"IncludesAssetPack": true` to ship UI assets.
+- Hytale client "Diagnostic Mode" helps debug UI load errors.
+- `.ui` is currently the active system; a future NoesisGUI migration is expected.
+
+JAR-driven usage patterns:
+
+```java
+// HUD: attach a custom HUD and optionally hide default components.
+HudManager hud = player.getHudManager();
+hud.setCustomHud(player.getPlayerRef(), new MyHud(player.getPlayerRef()));
+// hud.hideHudComponents(player.getPlayerRef(), HudComponent.Hotbar, ...);
+// hud.resetHud(player.getPlayerRef());
+
+// Page: open and close a custom page.
+PageManager pages = player.getPageManager();
+pages.openCustomPage(ref, store, new MyPage(player.getPlayerRef()));
+pages.setPage(ref, store, Page.None);
+```
+
+Interactive pages use `InteractiveCustomUIPage<T>` with a `BuilderCodec<T>` to
+deserialize event payloads. Bind UI events with `UIEventBuilder` and call
+`sendUpdate()` or `sendUpdate(builder)` after handling input so the client
+continues processing (client-side behavior noted in external docs).
+
+Minimal interactive binding (JAR + external UI IDs):
+
+```java
+@Override
+public void build(@Nonnull Ref<EntityStore> ref,
+                  @Nonnull UICommandBuilder ui,
+                  @Nonnull UIEventBuilder events,
+                  @Nonnull Store<EntityStore> store) {
+    ui.append("MyUI.ui");
+    events.addEventBinding(CustomUIEventBindingType.ValueChanged,
+        "#MyInput", EventData.of("@MyInput", "#MyInput.Value"), false);
+}
+
+@Override
+public void handleDataEvent(@Nonnull Ref<EntityStore> ref,
+                            @Nonnull Store<EntityStore> store,
+                            MyData data) {
+    // Process input...
+    sendUpdate();
+}
+```
+
+Minimal build example (JAR):
+
+```java
+public final class MyHud extends CustomUIHud {
+    public MyHud(PlayerRef playerRef) {
+        super(playerRef);
+    }
+
+    @Override
+    protected void build(UICommandBuilder ui) {
+        ui.append("MyUI.ui");
+    }
+}
+```
+
+In practice, the appended path is expected to resolve under
+`Common/UI/Custom/...` in your asset pack (external doc guidance).
 
 ### Alternative Command Bases (Site Docs)
 
@@ -1006,6 +1204,168 @@ CommandRegistration registration = getCommandRegistry().registerCommand(new Hell
 // Later:
 registration.unregister();
 ```
+
+## Inventory and ItemStack (JAR)
+
+Inventory access and containers:
+
+- `LivingEntity.getInventory()` returns `com.hypixel.hytale.server.core.inventory.Inventory`.
+- Section containers: `getStorage()`, `getHotbar()`, `getArmor()`, `getUtility()`,
+  `getTools()`, `getBackpack()`.
+- Combined containers: `getCombinedEverything()`, `getCombinedHotbarFirst()`,
+  `getCombinedStorageFirst()`, `getCombinedBackpackStorageHotbar()`,
+  `getCombinedArmorHotbarStorage()`, `getCombinedArmorHotbarUtilityStorage()`,
+  `getCombinedHotbarUtilityConsumableStorage()`.
+
+Use `ItemContainer` methods to add/remove stacks:
+
+```java
+import com.hypixel.hytale.server.core.inventory.Inventory;
+import com.hypixel.hytale.server.core.inventory.ItemStack;
+import com.hypixel.hytale.server.core.inventory.container.ItemContainer;
+
+Inventory inventory = player.getInventory();
+ItemContainer storage = inventory.getStorage();
+
+ItemStack stack = new ItemStack("Stone", 64);
+storage.addItemStack(stack);
+storage.addItemStackToSlot((short) 4, stack);
+```
+
+ItemStack constructors (JAR):
+
+```java
+import org.bson.BsonDocument;
+import org.bson.BsonString;
+
+ItemStack simple = new ItemStack("Stone");
+ItemStack withQuantity = new ItemStack("Stone", 64);
+
+BsonDocument metadata = new BsonDocument();
+metadata.append("customData", new BsonString("value"));
+ItemStack withMetadata = new ItemStack("Stone", 64, metadata);
+ItemStack withDurability = new ItemStack("DiamondSword", 1, 100.0, 100.0, metadata);
+```
+
+Storage sort uses `SortType`:
+
+```java
+import com.hypixel.hytale.server.core.inventory.container.SortType;
+
+inventory.sortStorage(SortType.NAME);
+```
+
+Simple denylist cleanup:
+
+```java
+import java.util.Set;
+
+Set<String> denylist = Set.of("Debug_Wand", "Dev_Block");
+ItemContainer storage = inventory.getStorage();
+storage.forEach((short slot, ItemStack stack) -> {
+    if (stack != null && denylist.contains(stack.getItemId())) {
+        storage.removeItemStackFromSlot(slot);
+    }
+});
+```
+
+Inventory pages are controlled via `PageManager`:
+
+```java
+import com.hypixel.hytale.component.Ref;
+import com.hypixel.hytale.component.Store;
+import com.hypixel.hytale.protocol.packets.interface_.Page;
+import com.hypixel.hytale.server.core.universe.world.storage.EntityStore;
+
+Ref<EntityStore> ref = player.getReference();
+Store<EntityStore> store = player.getWorld().getEntityStore().getStore();
+player.getPageManager().setPage(ref, store, Page.Inventory);
+```
+
+`Page` lives in `com.hypixel.hytale.protocol.packets.interface_.Page` and includes
+`None`, `Bench`, `Inventory`, `ToolsSettings`, `Map`, `MachinimaEditor`,
+`ContentCreation`, `Custom`.
+
+## Custom Interactions (JAR + External Notes)
+
+JAR anchors:
+
+- `com.hypixel.hytale.server.core.modules.interaction.interaction.config.Interaction`
+- `SimpleInteraction` / `SimpleInstantInteraction`
+- `PluginBase.getCodecRegistry(...)`
+
+Registering a custom interaction codec (JAR):
+
+```java
+import com.hypixel.hytale.codec.builder.BuilderCodec;
+import com.hypixel.hytale.protocol.InteractionType;
+import com.hypixel.hytale.server.core.entity.InteractionContext;
+import com.hypixel.hytale.server.core.modules.interaction.interaction.CooldownHandler;
+import com.hypixel.hytale.server.core.modules.interaction.interaction.config.Interaction;
+import com.hypixel.hytale.server.core.modules.interaction.interaction.config.SimpleInstantInteraction;
+
+public final class MyInteraction extends SimpleInstantInteraction {
+    public static final BuilderCodec<MyInteraction> CODEC =
+        BuilderCodec.builder(MyInteraction.class, MyInteraction::new, SimpleInstantInteraction.CODEC)
+            .build();
+
+    @Override
+    protected void firstRun(InteractionType type,
+                            InteractionContext context,
+                            CooldownHandler cooldownHandler) {
+        // custom behavior
+    }
+}
+
+@Override
+protected void setup() {
+    getCodecRegistry(Interaction.CODEC)
+        .register("my_custom_interaction_id", MyInteraction.class, MyInteraction.CODEC);
+}
+```
+
+External doc notes (unverified): item JSON in `Server/Item/Items/...` uses an
+`Interactions` map that references interaction IDs; root interactions live under
+`Server/Item/RootInteractions/...` and interaction definitions under
+`Server/Item/Interactions/...`.
+
+## Spawning Entities (JAR)
+
+Core entry points:
+
+- `World.execute(Runnable)` for world-thread work.
+- `EntityStore.getStore()` to access `Store<EntityStore>`.
+- `EntityStore.REGISTRY.newHolder()` to build an entity holder.
+- `Store.addEntity(holder, AddReason)` to spawn.
+
+Minimal pattern (JAR):
+
+```java
+import com.hypixel.hytale.component.AddReason;
+import com.hypixel.hytale.component.Holder;
+import com.hypixel.hytale.component.Store;
+import com.hypixel.hytale.math.vector.Vector3d;
+import com.hypixel.hytale.math.vector.Vector3f;
+import com.hypixel.hytale.server.core.modules.entity.component.TransformComponent;
+import com.hypixel.hytale.server.core.universe.world.World;
+import com.hypixel.hytale.server.core.universe.world.storage.EntityStore;
+
+World world = player.getWorld();
+world.execute(() -> {
+    Store<EntityStore> store = world.getEntityStore().getStore();
+    Holder<EntityStore> holder = EntityStore.REGISTRY.newHolder();
+
+    holder.addComponent(
+        TransformComponent.getComponentType(),
+        new TransformComponent(new Vector3d(0, 64, 0), new Vector3f(0, 0, 0))
+    );
+
+    store.addEntity(holder, AddReason.SPAWN);
+});
+```
+
+You are responsible for adding the components required by the entity you want
+to spawn (for example, model and bounding box components).
 
 ---
 

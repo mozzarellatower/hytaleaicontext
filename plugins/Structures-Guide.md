@@ -184,6 +184,7 @@ Add a usable item with interaction:
 4. Implement the interaction handler in a plugin.
 
 Add custom UI:
-1. Add `.ui` files under `Common/UI/Custom/Pages/...`.
+1. Add `.ui` files under `Common/UI/Custom/...` (often `Common/UI/Custom/Pages/...`).
 2. Add UI textures under `Common/UI/Custom/...`.
-3. Load and show the UI from plugin code in response to interactions or commands.
+3. Ensure `manifest.json` sets `"IncludesAssetPack": true`.
+4. Load and show the UI from plugin code in response to interactions or commands.

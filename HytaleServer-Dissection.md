@@ -86,6 +86,22 @@ Packet group samples (class prefixes under `com.hypixel.hytale.protocol.packets.
 - `world` (36): `SetChunk`, `UpdateTime`, `ServerSetBlock`, `UpdateWeather`
 - `worldmap` (12): `UpdateWorldMap`, `MapChunk`, `MapMarker`
 
+## Server Networking (JAR)
+
+Key server-side networking classes:
+
+- `com.hypixel.hytale.server.core.io.PacketHandler` (base handler)
+- `com.hypixel.hytale.server.core.io.netty.PlayerChannelHandler` (Netty inbound bridge)
+- `com.hypixel.hytale.server.core.io.adapter.PacketAdapters` (inbound/outbound filter registry)
+
+Packet handler implementations observed in the JAR:
+
+- Core: `InitialPacketHandler`, `AuthenticationPacketHandler`, `PasswordPacketHandler`,
+  `SetupPacketHandler`, `GamePacketHandler`, `InventoryPacketHandler`,
+  `GenericConnectionPacketHandler`, `GenericPacketHandler`, `SubPacketHandler`
+- Built-in: `AssetEditorPacketHandler`, `AssetEditorGamePacketHandler`,
+  `BuilderToolsPacketHandler`, `MountGamePacketHandler`
+
 ## Package Map (Procedural Library)
 
 `com.hypixel.hytale.procedurallib` subpackages:
@@ -475,6 +491,14 @@ Universe and storage:
 - `Universe`, `PlayerRef`
 - `DiskDataStore`, `DiskPlayerStorageProvider`
 
+Player transfer (JAR):
+
+- `PlayerRef.referToServer(host, port[, data])` sends a `ClientReferral` packet
+  (`com.hypixel.hytale.protocol.packets.auth.ClientReferral`) with a
+  `HostAddress` target and optional referral data (max 4096 bytes).
+- Incoming referrals surface on `PlayerSetupConnectEvent`
+  (`getReferralData()`, `getReferralSource()`).
+
 World access and chunk internals:
 
 - `BlockAccessor`, `ChunkAccessor`
@@ -485,6 +509,24 @@ Worldgen entry points:
 - `IWorldGen`, `IWorldGenProvider`
 - `FlatWorldGenProvider`, `VoidWorldGenProvider`
 - `WorldGenTimingsCollector`, `WorldGenBenchmarkCommand`
+
+### Worldgen: Zones, Biomes, Caves (JAR)
+
+The JAR exposes a zone/biome/cave stack under `com.hypixel.hytale.server.worldgen.*`:
+
+- Zones: `ZonePatternGenerator.generate(seed, x, z)` returns `ZoneGeneratorResult`.
+  - `ZoneGeneratorResult.getZone()` and `getBorderDistance()`.
+  - `Zone` is a record with `biomePatternGenerator()` and `caveGenerator()`.
+  - Discovery metadata lives in `ZoneDiscoveryConfig`.
+- Biomes: `BiomePatternGenerator.generateBiomeAt(zoneResult, seed, x, z)` and
+  `getCustomBiomeAt(...)` (`Biome`, `CustomBiome`, `TileBiome`).
+- Caves: `CaveGenerator.getCaveTypes()` returns `CaveType[]`.
+  - `CaveType.getBiomeMask()` exposes an `Int2FlagsCondition` used for biome masks.
+  - `CaveBiomeMaskFlags` exists under `server.worldgen.cave`.
+
+External tutorials describe zones, biomes, and caves as linked systems with
+zone borders and biome masks; these concepts align with the class structure
+above but should still be validated on your target build.
 
 ## Dimensions (Multiple Worlds) - Inferred Guidance
 
